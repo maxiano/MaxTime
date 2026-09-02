@@ -1,8 +1,8 @@
 // Importa Firebase dai CDN ufficiali
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
-    getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc,
-    onSnapshot, query, where, getDocs 
+    getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, setDoc, 
+    onSnapshot, query, where, getDocs, getDoc 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Configurazione Firebase
@@ -16,11 +16,9 @@ const firebaseConfig = {
     measurementId: "G-QK36FKB2X9"
 };
 
-// Inizializzazione Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Helper per formattare la data in stringa "YYYY-MM-DD"
 function formatDateToISO(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -43,7 +41,6 @@ const taskTime = document.getElementById('task-time');
 const taskCategory = document.getElementById('task-category');
 const scheduleContainer = document.getElementById('schedule-container');
 
-// Elementi Taccuino
 const dailyNote = document.getElementById('daily-note');
 const noteStatus = document.getElementById('note-status');
 
@@ -64,10 +61,10 @@ function loadDayData(dateStr) {
     listenToNoteForDate(dateStr);
 }
 
-// Sincronizzazione Task
 function listenToTasksForDate(dateStr) {
     if (unsubscribeTasks) unsubscribeTasks();
 
+    // Ordiniamo prima per time, poi per l'indice di ordinamento 'order'
     const q = query(collection(db, "tasks"), where("date", "==", dateStr));
 
     unsubscribeTasks = onSnapshot(q, (snapshot) => {
@@ -82,15 +79,23 @@ function listenToTasksForDate(dateStr) {
             groupedTasks[slot].push({ id, ...task });
         });
 
+        // Ordina localmente i task dentro ogni slot in base al campo 'order' (o createdAt se manca)
+        Object.keys(groupedTasks).forEach(slot => {
+            groupedTasks[slot].sort((a, b) => {
+                const orderA = a.order !== undefined ? a.order : 0;
+                const orderB = b.order !== undefined ? b.order : 0;
+                return orderA - orderB;
+            });
+        });
+
         renderSchedule(groupedTasks);
     });
 }
 
-// Sincronizzazione Nota del giorno (usiamo la data come ID documento nella collection "notes")
 function listenToNoteForDate(dateStr) {
     if (unsubscribeNote) unsubscribeNote();
 
-    isSavingNote = true; // Evita loop mentre carica
+    isSavingNote = true;
     const noteRef = doc(db, "notes", dateStr);
 
     unsubscribeNote = onSnapshot(noteRef, (docSnap) => {
@@ -107,7 +112,6 @@ function listenToNoteForDate(dateStr) {
     });
 }
 
-// Salvataggio automatico ritardato (Debounce) mentre si digita nella nota
 dailyNote.addEventListener('input', () => {
     if (isSavingNote) return;
     
@@ -128,7 +132,7 @@ dailyNote.addEventListener('input', () => {
             console.error("Errore salvataggio nota:", error);
             noteStatus.textContent = "Errore salvataggio";
         }
-    }, 800); // Salva 800ms dopo che l'utente ha smesso di scrivere
+    }, 800);
 });
 
 function renderSchedule(groupedTasks) {
@@ -142,11 +146,15 @@ function renderSchedule(groupedTasks) {
         if (tasksInSlot.length === 0) {
             tasksHtml = `<div class="empty-slot">Nessun impegno pianificato</div>`;
         } else {
-            tasksHtml = `<ul>` + tasksInSlot.map(t => {
+            tasksHtml = `<ul>` + tasksInSlot.map((t, index) => {
                 const category = t.category || 'lavoro';
                 return `
                 <li class="${t.completed ? 'completed' : ''}">
-                    <div class="task-content" onclick="toggleTask('${t.id}', ${t.completed})">
+                    <div style="display:flex; flex-direction:column; margin-right: 6px;">
+                        <button style="background:none; border:none; cursor:pointer; font-size:0.6rem; color:#9ca3af; padding:0;" onclick="moveTask('${t.id}', 'up', '${slot}')">▲</button>
+                        <button style="background:none; border:none; cursor:pointer; font-size:0.6rem; color:#9ca3af; padding:0;" onclick="moveTask('${t.id}', 'down', '${slot}')">▼</button>
+                    </div>
+                    <div class="task-content" onclick="toggleTask('${t.id}', ${t.completed})" style="flex:1; display:flex; align-items:center; cursor:pointer;">
                         <span class="badge badge-${category}">${category}</span>
                         <span class="task-text">${t.text}</span>
                     </div>
@@ -164,7 +172,7 @@ function renderSchedule(groupedTasks) {
     });
 }
 
-// Aggiungere un Task con Categoria
+// Aggiungere un Task con ordine incrementale nel blocco
 taskForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = taskInput.value.trim();
@@ -173,11 +181,17 @@ taskForm.addEventListener('submit', async (e) => {
     if (!text) return;
 
     try {
+        // Calcoliamo l'ordine mettendolo in fondo alla lista dello stesso slot/data
+        const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("time", "==", time));
+        const snapshot = await getDocs(q);
+        const nextOrder = snapshot.size;
+
         await addDoc(collection(db, "tasks"), {
             text: text,
             time: time,
             category: category,
             date: selectedDateStr,
+            order: nextOrder,
             completed: false,
             createdAt: new Date()
         });
@@ -189,13 +203,49 @@ taskForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Sposta task non completati al giorno successivo
+// Funzione per spostare su o giù un task nello stesso blocco
+window.moveTask = async function(id, direction, slot) {
+    try {
+        const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("time", "==", slot));
+        const snapshot = await getDocs(q);
+        
+        let tasks = [];
+        snapshot.forEach(docSnap => tasks.push({ id: docSnap.id, ...docSnap.data() }));
+        
+        // Ordina in base all'ordine attuale
+        tasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        const currentIndex = tasks.findIndex(t => t.id === id);
+        if (currentIndex === -1) return;
+
+        const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+        // Se supera i limiti, non fare nulla
+        if (targetIndex < 0 || targetIndex >= tasks.length) return;
+
+        // Scambia gli ordini tra i due task
+        const tempOrder = tasks[currentIndex].order;
+        tasks[currentIndex].order = tasks[targetIndex].order;
+        tasks[targetIndex].order = tempOrder;
+
+        // Se per caso avevano lo stesso ordine, forza i valori in base all'indice
+        if (tasks[currentIndex].order === tasks[targetIndex].order) {
+            tasks[currentIndex].order = targetIndex;
+            tasks[targetIndex].order = currentIndex;
+        }
+
+        // Aggiorna su Firestore entrambi i task
+        await updateDoc(doc(db, "tasks", tasks[currentIndex].id), { order: tasks[currentIndex].order });
+        await updateDoc(doc(db, "tasks", tasks[targetIndex].id), { order: tasks[targetIndex].order });
+
+    } catch (error) {
+        console.error("Errore nello spostamento task:", error);
+    }
+};
+
 carryOverBtn.addEventListener('click', async () => {
     try {
         const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("completed", "==", false));
-        const querySnapshot = getDocs(q); // await gestito sotto
-
-        // Correzione per compatibilità query getDocs
         const snapshot = await getDocs(q);
         if (snapshot.empty) {
             alert("Nessun task in sospeso da spostare!");
