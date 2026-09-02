@@ -39,6 +39,12 @@
         .badge-personale { background: #f3e8ff; color: #6b21a8; }
         .badge-urgente { background: #fee2e2; color: #991b1b; }
 
+        /* Filtri Rapidi per Categoria */
+        .filter-bar { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+        .filter-chip { background: #fff; border: 1px solid var(--border); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #4b5563; white-space: nowrap; }
+        .filter-chip:hover { background: #f3f4f6; }
+        .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+
         /* Taccuino / Brain Dump */
         .note-card { background: #fffbeb; border: 1px solid #fde68a; }
         .note-header { font-weight: 600; font-size: 0.9rem; color: #b45309; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -110,6 +116,15 @@
                 <input type="text" id="task-input" placeholder="Attività o blocco..." required autocomplete="off">
                 <button type="submit">Pianifica</button>
             </form>
+        </div>
+
+        <!-- Barra dei Filtri Categoria -->
+        <div class="filter-bar" id="filter-bar">
+            <div class="filter-chip active" data-filter="all">Tutti</div>
+            <div class="filter-chip" data-filter="lavoro">Lavoro</div>
+            <div class="filter-chip" data-filter="sport">Sport</div>
+            <div class="filter-chip" data-filter="personale">Personale</div>
+            <div class="filter-chip" data-filter="urgente">Urgente</div>
         </div>
 
         <!-- Azioni Rapide della Giornata -->
