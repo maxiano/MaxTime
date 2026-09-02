@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, setDoc, 
-    onSnapshot, query, where, getDocs, getDoc 
+    onSnapshot, query, where, getDocs 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Configurazione Firebase
@@ -28,6 +28,7 @@ function formatDateToISO(date) {
 
 let currentDate = new Date();
 let selectedDateStr = formatDateToISO(currentDate);
+let currentFilter = 'all'; // Filtro categoria attivo
 
 const datePicker = document.getElementById('date-picker');
 const prevDayBtn = document.getElementById('prev-day');
@@ -40,6 +41,7 @@ const taskInput = document.getElementById('task-input');
 const taskTime = document.getElementById('task-time');
 const taskCategory = document.getElementById('task-category');
 const scheduleContainer = document.getElementById('schedule-container');
+const filterChips = document.querySelectorAll('.filter-chip');
 
 const dailyNote = document.getElementById('daily-note');
 const noteStatus = document.getElementById('note-status');
@@ -50,6 +52,7 @@ let unsubscribeTasks = null;
 let unsubscribeNote = null;
 let isSavingNote = false;
 let saveTimeout = null;
+let latestGroupedTasks = {}; // Memorizza i dati grezzi per poterli ri-filtrare istantaneamente
 
 function updateDateUI() {
     datePicker.value = selectedDateStr;
@@ -64,7 +67,6 @@ function loadDayData(dateStr) {
 function listenToTasksForDate(dateStr) {
     if (unsubscribeTasks) unsubscribeTasks();
 
-    // Ordiniamo prima per time, poi per l'indice di ordinamento 'order'
     const q = query(collection(db, "tasks"), where("date", "==", dateStr));
 
     unsubscribeTasks = onSnapshot(q, (snapshot) => {
@@ -79,7 +81,7 @@ function listenToTasksForDate(dateStr) {
             groupedTasks[slot].push({ id, ...task });
         });
 
-        // Ordina localmente i task dentro ogni slot in base al campo 'order' (o createdAt se manca)
+        // Ordinamento per 'order'
         Object.keys(groupedTasks).forEach(slot => {
             groupedTasks[slot].sort((a, b) => {
                 const orderA = a.order !== undefined ? a.order : 0;
@@ -88,7 +90,8 @@ function listenToTasksForDate(dateStr) {
             });
         });
 
-        renderSchedule(groupedTasks);
+        latestGroupedTasks = groupedTasks;
+        renderSchedule();
     });
 }
 
@@ -135,18 +138,32 @@ dailyNote.addEventListener('input', () => {
     }, 800);
 });
 
-function renderSchedule(groupedTasks) {
+// Rendering dei blocchi applicando il filtro attivo
+function renderSchedule() {
     scheduleContainer.innerHTML = '';
+    
     timeSlots.forEach(slot => {
-        const tasksInSlot = groupedTasks[slot] || [];
+        const tasksInSlot = latestGroupedTasks[slot] || [];
+        
+        // Filtra i task in base alla categoria selezionata
+        const filteredTasks = tasksInSlot.filter(t => {
+            if (currentFilter === 'all') return true;
+            return (t.category || 'lavoro') === currentFilter;
+        });
+
+        // Se c'è un filtro attivo e questo slot non ha task corrispondenti, saltiamo il blocco per pulizia visiva
+        if (currentFilter !== 'all' && filteredTasks.length === 0) {
+            return; 
+        }
+
         const blockDiv = document.createElement('div');
         blockDiv.className = 'time-block';
         
         let tasksHtml = '';
-        if (tasksInSlot.length === 0) {
+        if (filteredTasks.length === 0) {
             tasksHtml = `<div class="empty-slot">Nessun impegno pianificato</div>`;
         } else {
-            tasksHtml = `<ul>` + tasksInSlot.map((t, index) => {
+            tasksHtml = `<ul>` + filteredTasks.map((t) => {
                 const category = t.category || 'lavoro';
                 return `
                 <li class="${t.completed ? 'completed' : ''}">
@@ -170,7 +187,21 @@ function renderSchedule(groupedTasks) {
         
         scheduleContainer.appendChild(blockDiv);
     });
+
+    if (scheduleContainer.innerHTML === '') {
+        scheduleContainer.innerHTML = `<div class="card" style="text-align:center; color:#9ca3af; font-style:italic;">Nessun impegno trovato per la categoria "${currentFilter}" in questa giornata.</div>`;
+    }
 }
+
+// Gestione click sui chip di filtro
+filterChips.forEach(chip => {
+    chip.addEventListener('click', (e) => {
+        filterChips.forEach(c => c.classList.remove('active'));
+        e.target.classList.add('active');
+        currentFilter = e.target.getAttribute('data-filter');
+        renderSchedule();
+    });
+});
 
 // Aggiungere un Task con ordine incrementale nel blocco
 taskForm.addEventListener('submit', async (e) => {
@@ -181,7 +212,6 @@ taskForm.addEventListener('submit', async (e) => {
     if (!text) return;
 
     try {
-        // Calcoliamo l'ordine mettendolo in fondo alla lista dello stesso slot/data
         const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("time", "==", time));
         const snapshot = await getDocs(q);
         const nextOrder = snapshot.size;
@@ -203,7 +233,6 @@ taskForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Funzione per spostare su o giù un task nello stesso blocco
 window.moveTask = async function(id, direction, slot) {
     try {
         const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("time", "==", slot));
@@ -212,29 +241,23 @@ window.moveTask = async function(id, direction, slot) {
         let tasks = [];
         snapshot.forEach(docSnap => tasks.push({ id: docSnap.id, ...docSnap.data() }));
         
-        // Ordina in base all'ordine attuale
         tasks.sort((a, b) => (a.order || 0) - (b.order || 0));
 
         const currentIndex = tasks.findIndex(t => t.id === id);
         if (currentIndex === -1) return;
 
         const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-
-        // Se supera i limiti, non fare nulla
         if (targetIndex < 0 || targetIndex >= tasks.length) return;
 
-        // Scambia gli ordini tra i due task
         const tempOrder = tasks[currentIndex].order;
         tasks[currentIndex].order = tasks[targetIndex].order;
         tasks[targetIndex].order = tempOrder;
 
-        // Se per caso avevano lo stesso ordine, forza i valori in base all'indice
         if (tasks[currentIndex].order === tasks[targetIndex].order) {
             tasks[currentIndex].order = targetIndex;
             tasks[targetIndex].order = currentIndex;
         }
 
-        // Aggiorna su Firestore entrambi i task
         await updateDoc(doc(db, "tasks", tasks[currentIndex].id), { order: tasks[currentIndex].order });
         await updateDoc(doc(db, "tasks", tasks[targetIndex].id), { order: tasks[targetIndex].order });
 
