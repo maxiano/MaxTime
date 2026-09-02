@@ -10,15 +10,27 @@
         :root { --primary: #4f46e5; --bg: #f9fafb; --card: #ffffff; --text: #1f2937; --border: #e5e7eb; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 650px; }
-        h1 { font-size: 1.5rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        h1 { font-size: 1.4rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+        
         .card { background: var(--card); padding: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
         
+        /* Navigazione Data */
+        .date-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .date-nav input[type="date"] { font-size: 1rem; padding: 8px; border: 1px solid var(--border); border-radius: 8px; text-align: center; flex: 1; font-family: inherit; }
+        .nav-btn { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .nav-btn:hover { background: #e5e7eb; }
+
+        /* Action bar per azioni rapide */
+        .actions-bar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+        .secondary-btn { background: #f3f4f6; color: #4b5563; border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-weight: 500; }
+        .secondary-btn:hover { background: #e5e7eb; color: var(--text); }
+
         /* Form Time Blocking */
         form { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; }
         @media(max-width: 500px) { form { grid-template-columns: 1fr; } }
         input, select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; background: #fff; }
-        button { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        button:hover { opacity: 0.9; }
+        button[type="submit"] { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        button[type="submit"]:hover { opacity: 0.9; }
 
         /* Lista dei blocchi orari */
         .time-block { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
@@ -27,20 +39,28 @@
         li { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f9fafb; }
         li:last-child { border-bottom: none; }
         li.completed span.task-text { text-decoration: line-through; color: #9ca3af; }
-        .delete-btn { background: #ef4444; padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; }
+        .delete-btn { background: #ef4444; color: white; border: none; padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; }
         .empty-slot { padding: 10px 12px; color: #9ca3af; font-size: 0.9rem; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>📅 DayFlow <span style="font-size: 0.9rem; font-weight: normal; color: #6b7280;" id="current-date"></span></h1>
+        <h1>📅 DayFlow</h1>
         
+        <!-- Bar Delle Date -->
+        <div class="card date-nav">
+            <button class="nav-btn" id="prev-day">◄</button>
+            <input type="date" id="date-picker">
+            <button class="nav-btn" id="next-day">►</button>
+            <button class="nav-btn" id="today-btn">Oggi</button>
+        </div>
+
         <!-- Form Aggiunta Task con Orario -->
         <div class="card">
             <form id="task-form">
                 <select id="task-time" required>
-                    <option value="" disabled selected>Seleziona ora</option>
+                    <option value="" disabled selected>Ora</option>
                     <option value="08:00">08:00</option>
                     <option value="09:00">09:00</option>
                     <option value="10:00">10:00</option>
@@ -54,11 +74,16 @@
                     <option value="18:00">18:00</option>
                     <option value="19:00">19:00</option>
                     <option value="20:00">20:00</option>
-                    <option value="Inbox">Senza Orario (Inbox)</option>
+                    <option value="Inbox">Inbox</option>
                 </select>
-                <input type="text" id="task-input" placeholder="Attività o blocco di lavoro..." required autocomplete="off">
+                <input type="text" id="task-input" placeholder="Attività o blocco..." required autocomplete="off">
                 <button type="submit">Pianifica</button>
             </form>
+        </div>
+
+        <!-- Azioni Rapide della Giornata -->
+        <div class="actions-bar">
+            <button class="secondary-btn" id="carry-over-btn">➡️ Sposta non completati a domani</button>
         </div>
 
         <!-- Contenitore della Giornata divisa per Blocchi -->
