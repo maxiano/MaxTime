@@ -1,7 +1,7 @@
 // Importa Firebase dai CDN ufficiali
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
-    getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, 
+    getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc,
     onSnapshot, query, where, getDocs 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -43,21 +43,34 @@ const taskTime = document.getElementById('task-time');
 const taskCategory = document.getElementById('task-category');
 const scheduleContainer = document.getElementById('schedule-container');
 
+// Elementi Taccuino
+const dailyNote = document.getElementById('daily-note');
+const noteStatus = document.getElementById('note-status');
+
 const timeSlots = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "Inbox"];
 
-let unsubscribeSnapshot = null;
+let unsubscribeTasks = null;
+let unsubscribeNote = null;
+let isSavingNote = false;
+let saveTimeout = null;
 
 function updateDateUI() {
     datePicker.value = selectedDateStr;
-    listenToTasksForDate(selectedDateStr);
+    loadDayData(selectedDateStr);
 }
 
+function loadDayData(dateStr) {
+    listenToTasksForDate(dateStr);
+    listenToNoteForDate(dateStr);
+}
+
+// Sincronizzazione Task
 function listenToTasksForDate(dateStr) {
-    if (unsubscribeSnapshot) unsubscribeSnapshot();
+    if (unsubscribeTasks) unsubscribeTasks();
 
     const q = query(collection(db, "tasks"), where("date", "==", dateStr));
 
-    unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+    unsubscribeTasks = onSnapshot(q, (snapshot) => {
         const groupedTasks = {};
         timeSlots.forEach(slot => groupedTasks[slot] = []);
 
@@ -72,6 +85,51 @@ function listenToTasksForDate(dateStr) {
         renderSchedule(groupedTasks);
     });
 }
+
+// Sincronizzazione Nota del giorno (usiamo la data come ID documento nella collection "notes")
+function listenToNoteForDate(dateStr) {
+    if (unsubscribeNote) unsubscribeNote();
+
+    isSavingNote = true; // Evita loop mentre carica
+    const noteRef = doc(db, "notes", dateStr);
+
+    unsubscribeNote = onSnapshot(noteRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (dailyNote.value !== data.content) {
+                dailyNote.value = data.content || "";
+            }
+        } else {
+            dailyNote.value = "";
+        }
+        isSavingNote = false;
+        noteStatus.textContent = "Salvato";
+    });
+}
+
+// Salvataggio automatico ritardato (Debounce) mentre si digita nella nota
+dailyNote.addEventListener('input', () => {
+    if (isSavingNote) return;
+    
+    noteStatus.textContent = "Modifiche...";
+    clearTimeout(saveTimeout);
+
+    saveTimeout = setTimeout(async () => {
+        const content = dailyNote.value;
+        const noteRef = doc(db, "notes", selectedDateStr);
+        try {
+            await setDoc(noteRef, { 
+                date: selectedDateStr, 
+                content: content,
+                updatedAt: new Date()
+            }, { merge: true });
+            noteStatus.textContent = "Salvato";
+        } catch (error) {
+            console.error("Errore salvataggio nota:", error);
+            noteStatus.textContent = "Errore salvataggio";
+        }
+    }, 800); // Salva 800ms dopo che l'utente ha smesso di scrivere
+});
 
 function renderSchedule(groupedTasks) {
     scheduleContainer.innerHTML = '';
@@ -135,9 +193,11 @@ taskForm.addEventListener('submit', async (e) => {
 carryOverBtn.addEventListener('click', async () => {
     try {
         const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("completed", "==", false));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = getDocs(q); // await gestito sotto
 
-        if (querySnapshot.empty) {
+        // Correzione per compatibilità query getDocs
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) {
             alert("Nessun task in sospeso da spostare!");
             return;
         }
@@ -146,12 +206,12 @@ carryOverBtn.addEventListener('click', async () => {
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowStr = formatDateToISO(tomorrow);
 
-        const promises = querySnapshot.docs.map(docSnap => 
+        const promises = snapshot.docs.map(docSnap => 
             updateDoc(doc(db, "tasks", docSnap.id), { date: tomorrowStr })
         );
 
         await Promise.all(promises);
-        alert(`Spostati ${querySnapshot.size} task a domani (${tomorrowStr})!`);
+        alert(`Spostati ${snapshot.size} task a domani (${tomorrowStr})!`);
     } catch (error) {
         console.error("Errore durante lo spostamento task:", error);
     }
@@ -160,7 +220,7 @@ carryOverBtn.addEventListener('click', async () => {
 datePicker.addEventListener('change', (e) => {
     selectedDateStr = e.target.value;
     currentDate = new Date(selectedDateStr + "T00:00:00");
-    listenToTasksForDate(selectedDateStr);
+    loadDayData(selectedDateStr);
 });
 
 prevDayBtn.addEventListener('click', () => {
