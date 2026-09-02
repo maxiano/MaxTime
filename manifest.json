@@ -1,8 +1,9 @@
 {
-  "id": "/",
+  "id": "/MaxTime/",
   "name": "DayFlow",
   "short_name": "DayFlow",
-  "start_url": "/",
+  "start_url": "/MaxTime/",
+  "scope": "/MaxTime/",
   "display": "standalone",
   "background_color": "#f9fafb",
   "theme_color": "#4f46e5",
