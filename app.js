@@ -28,11 +28,9 @@ function formatDateToISO(date) {
     return `${year}-${month}-${day}`;
 }
 
-// Stato dell'applicazione: data attualmente selezionata
 let currentDate = new Date();
 let selectedDateStr = formatDateToISO(currentDate);
 
-// Elementi DOM
 const datePicker = document.getElementById('date-picker');
 const prevDayBtn = document.getElementById('prev-day');
 const nextDayBtn = document.getElementById('next-day');
@@ -42,22 +40,20 @@ const carryOverBtn = document.getElementById('carry-over-btn');
 const taskForm = document.getElementById('task-form');
 const taskInput = document.getElementById('task-input');
 const taskTime = document.getElementById('task-time');
+const taskCategory = document.getElementById('task-category');
 const scheduleContainer = document.getElementById('schedule-container');
 
-// Blocchi orari standard della giornata
 const timeSlots = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "Inbox"];
 
-let unsubscribeSnapshot = null; // Per pulire il listener quando si cambia data
+let unsubscribeSnapshot = null;
 
-// 1. Inizializzazione della Data
 function updateDateUI() {
     datePicker.value = selectedDateStr;
     listenToTasksForDate(selectedDateStr);
 }
 
-// 2. Ascolto in tempo reale su Firestore per la data selezionata
 function listenToTasksForDate(dateStr) {
-    if (unsubscribeSnapshot) unsubscribeSnapshot(); // Ferma il vecchio listener
+    if (unsubscribeSnapshot) unsubscribeSnapshot();
 
     const q = query(collection(db, "tasks"), where("date", "==", dateStr));
 
@@ -77,7 +73,6 @@ function listenToTasksForDate(dateStr) {
     });
 }
 
-// 3. Render Interfaccia Grafica dei Blocchi
 function renderSchedule(groupedTasks) {
     scheduleContainer.innerHTML = '';
     timeSlots.forEach(slot => {
@@ -89,12 +84,17 @@ function renderSchedule(groupedTasks) {
         if (tasksInSlot.length === 0) {
             tasksHtml = `<div class="empty-slot">Nessun impegno pianificato</div>`;
         } else {
-            tasksHtml = `<ul>` + tasksInSlot.map(t => `
+            tasksHtml = `<ul>` + tasksInSlot.map(t => {
+                const category = t.category || 'lavoro';
+                return `
                 <li class="${t.completed ? 'completed' : ''}">
-                    <span class="task-text" style="cursor:pointer; flex:1;" onclick="toggleTask('${t.id}', ${t.completed})">${t.text}</span>
+                    <div class="task-content" onclick="toggleTask('${t.id}', ${t.completed})">
+                        <span class="badge badge-${category}">${category}</span>
+                        <span class="task-text">${t.text}</span>
+                    </div>
                     <button class="delete-btn" onclick="deleteTask('${t.id}')">✕</button>
-                </li>
-            `).join('') + `</ul>`;
+                </li>`;
+            }).join('') + `</ul>`;
         }
 
         blockDiv.innerHTML = `
@@ -106,29 +106,32 @@ function renderSchedule(groupedTasks) {
     });
 }
 
-// 4. Aggiungere un Task
+// Aggiungere un Task con Categoria
 taskForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = taskInput.value.trim();
     const time = taskTime ? taskTime.value : "Inbox";
+    const category = taskCategory ? taskCategory.value : "lavoro";
     if (!text) return;
 
     try {
         await addDoc(collection(db, "tasks"), {
             text: text,
             time: time,
-            date: selectedDateStr, // Salva con la data attiva
+            category: category,
+            date: selectedDateStr,
             completed: false,
             createdAt: new Date()
         });
         taskInput.value = '';
         if (taskTime) taskTime.value = '';
+        if (taskCategory) taskCategory.value = 'lavoro';
     } catch (error) {
         console.error("Errore aggiunta task:", error);
     }
 });
 
-// 5. Sposta task non completati al giorno successivo
+// Sposta task non completati al giorno successivo
 carryOverBtn.addEventListener('click', async () => {
     try {
         const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("completed", "==", false));
@@ -139,7 +142,6 @@ carryOverBtn.addEventListener('click', async () => {
             return;
         }
 
-        // Calcola la data di domani rispetto alla data visualizzata
         const tomorrow = new Date(currentDate);
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowStr = formatDateToISO(tomorrow);
@@ -155,7 +157,6 @@ carryOverBtn.addEventListener('click', async () => {
     }
 });
 
-// 6. Eventi per il Cambio Data
 datePicker.addEventListener('change', (e) => {
     selectedDateStr = e.target.value;
     currentDate = new Date(selectedDateStr + "T00:00:00");
@@ -180,7 +181,6 @@ todayBtn.addEventListener('click', () => {
     updateDateUI();
 });
 
-// 7. Funzioni globali per completamento ed eliminazione
 window.deleteTask = async function(id) {
     try {
         await deleteDoc(doc(db, "tasks", id));
@@ -197,10 +197,8 @@ window.toggleTask = async function(id, currentStatus) {
     }
 };
 
-// Avvio applicazione
 updateDateUI();
 
-// Service Worker PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(err => console.log("SW fallito", err));
