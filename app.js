@@ -4,12 +4,13 @@ import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, o
 
 // Configurazione Firebase (inserisci i tuoi dati)
 const firebaseConfig = {
-    apiKey: "TUA_API_KEY",
-    authDomain: "TUO_DOMINIO.firebaseapp.com",
-    projectId: "TUO_PROJECT_ID",
-    storageBucket: "TUO_STORAGE.appspot.com",
-    messagingSenderId: "TUO_MESSAGING_ID",
-    appId: "TUO_APP_ID"
+  apiKey: "AIzaSyBBFyH5mZDWnsxPsmR3aNpK8beA085b6rc",
+  authDomain: "maxtime-db5d0.firebaseapp.com",
+  projectId: "maxtime-db5d0",
+  storageBucket: "maxtime-db5d0.firebasestorage.app",
+  messagingSenderId: "718138907341",
+  appId: "1:718138907341:web:472b4ad69688bc3ffbe784",
+  measurementId: "G-QK36FKB2X9"
 };
 
 // Inizializzazione Firebase
