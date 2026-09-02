@@ -25,12 +25,19 @@
         .secondary-btn { background: #f3f4f6; color: #4b5563; border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-weight: 500; }
         .secondary-btn:hover { background: #e5e7eb; color: var(--text); }
 
-        /* Form Time Blocking */
-        form { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; }
-        @media(max-width: 500px) { form { grid-template-columns: 1fr; } }
+        /* Form Time Blocking con Categoria */
+        form { display: grid; grid-template-columns: 100px 110px 1fr auto; gap: 8px; }
+        @media(max-width: 600px) { form { grid-template-columns: 1fr; } }
         input, select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; background: #fff; }
         button[type="submit"] { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
         button[type="submit"]:hover { opacity: 0.9; }
+
+        /* Badge Categorie */
+        .badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; text-transform: uppercase; margin-right: 8px; white-space: nowrap; }
+        .badge-lavoro { background: #e0e7ff; color: #3730a3; }
+        .badge-sport { background: #dcfce7; color: #166534; }
+        .badge-personale { background: #f3e8ff; color: #6b21a8; }
+        .badge-urgente { background: #fee2e2; color: #991b1b; }
 
         /* Lista dei blocchi orari */
         .time-block { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
@@ -39,6 +46,7 @@
         li { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f9fafb; }
         li:last-child { border-bottom: none; }
         li.completed span.task-text { text-decoration: line-through; color: #9ca3af; }
+        .task-content { display: flex; align-items: center; flex: 1; cursor: pointer; }
         .delete-btn { background: #ef4444; color: white; border: none; padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; }
         .empty-slot { padding: 10px 12px; color: #9ca3af; font-size: 0.9rem; font-style: italic; }
     </style>
@@ -56,7 +64,7 @@
             <button class="nav-btn" id="today-btn">Oggi</button>
         </div>
 
-        <!-- Form Aggiunta Task con Orario -->
+        <!-- Form Aggiunta Task con Orario e Categoria -->
         <div class="card">
             <form id="task-form">
                 <select id="task-time" required>
@@ -76,6 +84,14 @@
                     <option value="20:00">20:00</option>
                     <option value="Inbox">Inbox</option>
                 </select>
+
+                <select id="task-category">
+                    <option value="lavoro" selected>Lavoro</option>
+                    <option value="sport">Sport</option>
+                    <option value="personale">Personale</option>
+                    <option value="urgente">Urgente</option>
+                </select>
+
                 <input type="text" id="task-input" placeholder="Attività o blocco..." required autocomplete="off">
                 <button type="submit">Pianifica</button>
             </form>
