@@ -39,6 +39,12 @@
         .badge-personale { background: #f3e8ff; color: #6b21a8; }
         .badge-urgente { background: #fee2e2; color: #991b1b; }
 
+        /* Taccuino / Brain Dump */
+        .note-card { background: #fffbeb; border: 1px solid #fde68a; }
+        .note-header { font-weight: 600; font-size: 0.9rem; color: #b45309; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .note-textarea { width: 100%; min-height: 80px; padding: 10px; border: 1px solid #fcd34d; border-radius: 8px; font-family: inherit; font-size: 0.9rem; background: #fffdf9; resize: vertical; box-sizing: border-box; }
+        .note-status { font-size: 0.75rem; color: #d97706; font-weight: normal; }
+
         /* Lista dei blocchi orari */
         .time-block { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
         .time-header { background: #f3f4f6; padding: 8px 12px; font-weight: 600; font-size: 0.9rem; color: #4b5563; border-bottom: 1px solid var(--border); }
@@ -62,6 +68,15 @@
             <input type="date" id="date-picker">
             <button class="nav-btn" id="next-day">►</button>
             <button class="nav-btn" id="today-btn">Oggi</button>
+        </div>
+
+        <!-- Taccuino / Brain Dump Giornaliero -->
+        <div class="card note-card">
+            <div class="note-header">
+                📝 Taccuino del Giorno (Brain Dump)
+                <span id="note-status" class="note-status">Salvato automatico</span>
+            </div>
+            <textarea id="daily-note" class="note-textarea" placeholder="Scrivi qui idee al volo, appunti o promemoria liberi per questa giornata..."></textarea>
         </div>
 
         <!-- Form Aggiunta Task con Orario e Categoria -->
