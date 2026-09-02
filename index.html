@@ -3,40 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DayFlow - La mia giornata</title>
+    <title>DayFlow - Time Blocking</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
     <style>
-        :root { --primary: #4f46e5; --bg: #f9fafb; --card: #ffffff; --text: #1f2937; }
+        :root { --primary: #4f46e5; --bg: #f9fafb; --card: #ffffff; --text: #1f2937; --border: #e5e7eb; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 600px; }
-        h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+        .container { width: 100%; max-width: 650px; }
+        h1 { font-size: 1.5rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
         .card { background: var(--card); padding: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
-        form { display: flex; gap: 8px; }
-        input[type="text"] { flex: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; }
+        
+        /* Form Time Blocking */
+        form { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; }
+        @media(max-width: 500px) { form { grid-template-columns: 1fr; } }
+        input, select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; background: #fff; }
         button { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
         button:hover { opacity: 0.9; }
+
+        /* Lista dei blocchi orari */
+        .time-block { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+        .time-header { background: #f3f4f6; padding: 8px 12px; font-weight: 600; font-size: 0.9rem; color: #4b5563; border-bottom: 1px solid var(--border); }
         ul { list-style: none; padding: 0; margin: 0; }
-        li { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
-        li.completed span { text-decoration: line-through; color: #9ca3af; }
-        .delete-btn { background: #ef4444; padding: 4px 8px; font-size: 0.8rem; }
+        li { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f9fafb; }
+        li:last-child { border-bottom: none; }
+        li.completed span.task-text { text-decoration: line-through; color: #9ca3af; }
+        .delete-btn { background: #ef4444; padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; }
+        .empty-slot { padding: 10px 12px; color: #9ca3af; font-size: 0.9rem; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>📅 La mia Giornata</h1>
+        <h1>📅 DayFlow <span style="font-size: 0.9rem; font-weight: normal; color: #6b7280;" id="current-date"></span></h1>
         
+        <!-- Form Aggiunta Task con Orario -->
         <div class="card">
             <form id="task-form">
-                <input type="text" id="task-input" placeholder="Cosa devi fare oggi?" required autocomplete="off">
-                <button type="submit">Aggiungi</button>
+                <select id="task-time" required>
+                    <option value="" disabled selected>Seleziona ora</option>
+                    <option value="08:00">08:00</option>
+                    <option value="09:00">09:00</option>
+                    <option value="10:00">10:00</option>
+                    <option value="11:00">11:00</option>
+                    <option value="12:00">12:00</option>
+                    <option value="13:00">13:00</option>
+                    <option value="14:00">14:00</option>
+                    <option value="15:00">15:00</option>
+                    <option value="16:00">16:00</option>
+                    <option value="17:00">17:00</option>
+                    <option value="18:00">18:00</option>
+                    <option value="19:00">19:00</option>
+                    <option value="20:00">20:00</option>
+                    <option value="Inbox">Senza Orario (Inbox)</option>
+                </select>
+                <input type="text" id="task-input" placeholder="Attività o blocco di lavoro..." required autocomplete="off">
+                <button type="submit">Pianifica</button>
             </form>
         </div>
 
-        <div class="card">
-            <ul id="task-list">
-                </ul>
+        <!-- Contenitore della Giornata divisa per Blocchi -->
+        <div id="schedule-container">
+            <!-- Generato dinamicamente da JS -->
         </div>
     </div>
 
