@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DayFlow - La mia giornata</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <style>
+        :root { --primary: #4f46e5; --bg: #f9fafb; --card: #ffffff; --text: #1f2937; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 600px; }
+        h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+        .card { background: var(--card); padding: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
+        form { display: flex; gap: 8px; }
+        input[type="text"] { flex: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; }
+        button { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        button:hover { opacity: 0.9; }
+        ul { list-style: none; padding: 0; margin: 0; }
+        li { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+        li.completed span { text-decoration: line-through; color: #9ca3af; }
+        .delete-btn { background: #ef4444; padding: 4px 8px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📅 La mia Giornata</h1>
+        
+        <div class="card">
+            <form id="task-form">
+                <input type="text" id="task-input" placeholder="Cosa devi fare oggi?" required autocomplete="off">
+                <button type="submit">Aggiungi</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <ul id="task-list">
+                </ul>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
