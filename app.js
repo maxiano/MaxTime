@@ -168,4 +168,242 @@ function renderSchedule() {
                 const category = t.category || 'lavoro';
                 const priority = t.priority || 'media';
                 const project = t.project ? `<span class="badge badge-project">📁 ${t.project}</span>` : '';
-                const resolution = t.resolution ? `<span class="resolution
+                const resolution = t.resolution ? `<span class="resolution-tag" onclick="editResolution('${t.id}', '${t.resolution.replace(/'/g, "\\'")}')" title="Clicca per modificare l'esito">⚡ ${t.resolution}</span>` : `<span class="resolution-tag" style="opacity:0.4; border-style:dashed;" onclick="editResolution('${t.id}', '')" title="Aggiungi esito pratico">+ Esito</span>`;
+                 
+                return `
+                <li class="task-item ${t.completed ? 'completed' : ''}" data-priority="${priority}">
+                    <div class="task-reorder">
+                        <button class="reorder-btn" title="Sposta su" onclick="moveTask('${t.id}', 'up', '${slot}')">▲</button>
+                        <button class="reorder-btn" title="Sposta giù" onclick="moveTask('${t.id}', 'down', '${slot}')">▼</button>
+                    </div>
+                    <div class="task-content" onclick="toggleTask('${t.id}', ${t.completed})">
+                        <div class="task-badges">
+                            <span class="badge badge-${category}">${category}</span>
+                            ${project}
+                            <span class="priority-indicator priority-${priority}" title="Priorità: ${priority}"></span>
+                        </div>
+                        <span class="task-text">${t.text}</span>
+                        ${resolution}
+                    </div>
+                    <button class="delete-btn" title="Elimina task" onclick="deleteTask('${t.id}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                </li>`;
+            }).join('') + `</ul>`;
+        }
+
+        const slotTitle = slot === "Inbox" ? "📥 Coda / Senza Orario" : `⏰ ${slot}`;
+        blockDiv.innerHTML = `
+            <div class="time-header">
+                <span class="slot-title">${slotTitle}</span>
+                <span class="slot-count">${filteredTasks.length}</span>
+            </div>
+            ${tasksHtml}
+        `;
+         
+        scheduleContainer.appendChild(blockDiv);
+    });
+
+    if (scheduleContainer.innerHTML === '') {
+        scheduleContainer.innerHTML = `
+            <div class="empty-state-card">
+                <p>Nessun impegno trovato per la categoria <strong>"${currentFilter}"</strong> in questa giornata.</p>
+            </div>`;
+    }
+}
+
+filterChips.forEach(chip => {
+    chip.addEventListener('click', (e) => {
+        filterChips.forEach(c => c.classList.remove('active'));
+        e.target.classList.add('active');
+        currentFilter = e.target.getAttribute('data-filter');
+        renderSchedule();
+    });
+});
+
+taskForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = taskInput.value.trim();
+    const time = taskTime ? taskTime.value : "Inbox";
+    const category = taskCategory ? taskCategory.value : "lavoro";
+    const project = taskProject ? taskProject.value : "";
+    const priority = taskPriority ? taskPriority.value : "media";
+    const resolution = taskResolution ? taskResolution.value.trim() : ""; // Cattura l'esito/risoluzione inserito
+    
+    if (!text) return;
+
+    try {
+        const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("time", "==", time));
+        const snapshot = await getDocs(q);
+        const nextOrder = snapshot.size;
+
+        await addDoc(collection(db, "tasks"), {
+            text: text,
+            time: time,
+            category: category,
+            project: project,
+            priority: priority,
+            resolution: resolution, // Salvataggio su Firestore
+            date: selectedDateStr,
+            order: nextOrder,
+            completed: false,
+            createdAt: new Date()
+        });
+         
+        taskInput.value = '';
+        if (taskTime) taskTime.value = '';
+        if (taskCategory) taskCategory.value = 'lavoro';
+        if (taskProject) taskProject.value = '';
+        if (taskPriority) taskPriority.value = 'media';
+        if (taskResolution) taskResolution.value = ''; // Reset del campo esito/risoluzione dopo l'invio
+    } catch (error) {
+        console.error("Errore aggiunta task:", error);
+    }
+});
+
+const addProjectBtn = document.getElementById('add-project-btn');
+const taskProjectSelect = document.getElementById('task-project');
+
+if (addProjectBtn && taskProjectSelect) {
+    addProjectBtn.addEventListener('click', () => {
+        const newProjectName = prompt("Inserisci il nome del nuovo progetto:");
+        if (newProjectName && newProjectName.trim() !== "") {
+            const projectName = newProjectName.trim();
+             
+            let exists = false;
+            for (let i = 0; i < taskProjectSelect.options.length; i++) {
+                if (taskProjectSelect.options[i].value.toLowerCase() === projectName.toLowerCase()) {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (exists) {
+                alert("Questo progetto esiste già!");
+            } else {
+                const opt = document.createElement('option');
+                opt.value = projectName;
+                opt.textContent = projectName;
+                taskProjectSelect.appendChild(opt);
+                taskProjectSelect.value = projectName;
+            }
+        }
+    });
+}
+
+// Funzione globale per modificare l'esito/risoluzione direttamente dalla lista task
+window.editResolution = async function(id, currentRes) {
+    const newRes = prompt("Inserisci o aggiorna l'esito / risoluzione pratica:", currentRes === 'undefined' ? '' : currentRes);
+    if (newRes !== null) {
+        try {
+            await updateDoc(doc(db, "tasks", id), { resolution: newRes.trim() });
+        } catch (error) {
+            console.error("Errore aggiornamento esito:", error);
+        }
+    }
+};
+
+window.moveTask = async function(id, direction, slot) {
+    try {
+        const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("time", "==", slot));
+        const snapshot = await getDocs(q);
+         
+        let tasks = [];
+        snapshot.forEach(docSnap => tasks.push({ id: docSnap.id, ...docSnap.data() }));
+         
+        tasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        const currentIndex = tasks.findIndex(t => t.id === id);
+        if (currentIndex === -1) return;
+
+        const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+        if (targetIndex < 0 || targetIndex >= tasks.length) return;
+
+        const tempOrder = tasks[currentIndex].order;
+        tasks[currentIndex].order = tasks[targetIndex].order;
+        tasks[targetIndex].order = tempOrder;
+
+        if (tasks[currentIndex].order === tasks[targetIndex].order) {
+            tasks[currentIndex].order = targetIndex;
+            tasks[targetIndex].order = currentIndex;
+        }
+
+        await updateDoc(doc(db, "tasks", tasks[currentIndex].id), { order: tasks[currentIndex].order });
+        await updateDoc(doc(db, "tasks", tasks[targetIndex].id), { order: tasks[targetIndex].order });
+
+    } catch (error) {
+        console.error("Errore nello spostamento task:", error);
+    }
+};
+
+carryOverBtn.addEventListener('click', async () => {
+    try {
+        const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("completed", "==", false));
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) {
+            alert("Nessun task in sospeso da spostare!");
+            return;
+        }
+
+        const tomorrow = new Date(currentDate);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = formatDateToISO(tomorrow);
+
+        const promises = snapshot.docs.map(docSnap => 
+            updateDoc(doc(db, "tasks", docSnap.id), { date: tomorrowStr })
+        );
+
+        await Promise.all(promises);
+        alert(`Spostati ${snapshot.size} task a domani (${tomorrowStr})!`);
+    } catch (error) {
+        console.error("Errore durante lo spostamento task:", error);
+    }
+});
+
+datePicker.addEventListener('change', (e) => {
+    selectedDateStr = e.target.value;
+    currentDate = new Date(selectedDateStr + "T00:00:00");
+    loadDayData(selectedDateStr);
+});
+
+prevDayBtn.addEventListener('click', () => {
+    currentDate.setDate(currentDate.getDate() - 1);
+    selectedDateStr = formatDateToISO(currentDate);
+    updateDateUI();
+});
+
+nextDayBtn.addEventListener('click', () => {
+    currentDate.setDate(currentDate.getDate() + 1);
+    selectedDateStr = formatDateToISO(currentDate);
+    updateDateUI();
+});
+
+todayBtn.addEventListener('click', () => {
+    currentDate = new Date();
+    selectedDateStr = formatDateToISO(currentDate);
+    updateDateUI();
+});
+
+window.deleteTask = async function(id) {
+    try {
+        await deleteDoc(doc(db, "tasks", id));
+    } catch (error) {
+        console.error("Errore eliminazione:", error);
+    }
+};
+
+window.toggleTask = async function(id, currentStatus) {
+    try {
+        await updateDoc(doc(db, "tasks", id), { completed: !currentStatus });
+    } catch (error) {
+        console.error("Errore aggiornamento:", error);
+    }
+};
+
+updateDateUI();
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log("SW fallito", err));
+    });
+}
