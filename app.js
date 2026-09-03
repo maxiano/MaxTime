@@ -40,6 +40,9 @@ const taskForm = document.getElementById('task-form');
 const taskInput = document.getElementById('task-input');
 const taskTime = document.getElementById('task-time');
 const taskCategory = document.getElementById('task-category');
+const taskProject = document.getElementById('task-project');
+const taskPriority = document.getElementById('task-priority');
+
 const scheduleContainer = document.getElementById('schedule-container');
 const filterChips = document.querySelectorAll('.filter-chip');
 
@@ -138,7 +141,7 @@ dailyNote.addEventListener('input', () => {
     }, 800);
 });
 
-// Rendering dei blocchi applicando il filtro attivo
+// Rendering dei blocchi applicando il filtro attivo e mostrando progetti/priorità
 function renderSchedule() {
     scheduleContainer.innerHTML = '';
     
@@ -151,7 +154,6 @@ function renderSchedule() {
             return (t.category || 'lavoro') === currentFilter;
         });
 
-        // Se c'è un filtro attivo e questo slot non ha task corrispondenti, saltiamo il blocco per pulizia visiva
         if (currentFilter !== 'all' && filteredTasks.length === 0) {
             return; 
         }
@@ -165,14 +167,18 @@ function renderSchedule() {
         } else {
             tasksHtml = `<ul>` + filteredTasks.map((t) => {
                 const category = t.category || 'lavoro';
+                const priority = t.priority || 'media';
+                const project = t.project ? `<span class="badge badge-project">${t.project}</span>` : '';
+                
                 return `
-                <li class="${t.completed ? 'completed' : ''}">
+                <li class="${t.completed ? 'completed' : ''}" data-priority="${priority}">
                     <div style="display:flex; flex-direction:column; margin-right: 6px;">
                         <button style="background:none; border:none; cursor:pointer; font-size:0.6rem; color:#9ca3af; padding:0;" onclick="moveTask('${t.id}', 'up', '${slot}')">▲</button>
                         <button style="background:none; border:none; cursor:pointer; font-size:0.6rem; color:#9ca3af; padding:0;" onclick="moveTask('${t.id}', 'down', '${slot}')">▼</button>
                     </div>
-                    <div class="task-content" onclick="toggleTask('${t.id}', ${t.completed})" style="flex:1; display:flex; align-items:center; cursor:pointer;">
+                    <div class="task-content" onclick="toggleTask('${t.id}', ${t.completed})">
                         <span class="badge badge-${category}">${category}</span>
+                        ${project}
                         <span class="task-text">${t.text}</span>
                     </div>
                     <button class="delete-btn" onclick="deleteTask('${t.id}')">✕</button>
@@ -203,12 +209,14 @@ filterChips.forEach(chip => {
     });
 });
 
-// Aggiungere un Task con ordine incrementale nel blocco
+// Aggiungere un Task salvando anche Progetto e Priorità
 taskForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = taskInput.value.trim();
     const time = taskTime ? taskTime.value : "Inbox";
     const category = taskCategory ? taskCategory.value : "lavoro";
+    const project = taskProject ? taskProject.value : "";
+    const priority = taskPriority ? taskPriority.value : "media";
     if (!text) return;
 
     try {
@@ -220,14 +228,20 @@ taskForm.addEventListener('submit', async (e) => {
             text: text,
             time: time,
             category: category,
+            project: project,
+            priority: priority,
             date: selectedDateStr,
             order: nextOrder,
             completed: false,
             createdAt: new Date()
         });
+        
+        // Reset dei campi di input testuali e opzioni
         taskInput.value = '';
         if (taskTime) taskTime.value = '';
         if (taskCategory) taskCategory.value = 'lavoro';
+        if (taskProject) taskProject.value = '';
+        if (taskPriority) taskPriority.value = 'media';
     } catch (error) {
         console.error("Errore aggiunta task:", error);
     }
