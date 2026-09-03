@@ -247,6 +247,39 @@ taskForm.addEventListener('submit', async (e) => {
     }
 });
 
+// Gestione aggiunta nuovo progetto tramite prompt rapido
+const addProjectBtn = document.getElementById('add-project-btn');
+const taskProjectSelect = document.getElementById('task-project');
+
+if (addProjectBtn && taskProjectSelect) {
+    addProjectBtn.addEventListener('click', () => {
+        const newProjectName = prompt("Inserisci il nome del nuovo progetto:");
+        if (newProjectName && newProjectName.trim() !== "") {
+            const projectName = newProjectName.trim();
+            
+            // Verifica se il progetto esiste già per evitare duplicati
+            let exists = false;
+            for (let i = 0; i < taskProjectSelect.options.length; i++) {
+                if (taskProjectSelect.options[i].value.toLowerCase() === projectName.toLowerCase()) {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (exists) {
+                alert("Questo progetto esiste già!");
+            } else {
+                // Crea la nuova option e la seleziona
+                const opt = document.createElement('option');
+                opt.value = projectName;
+                opt.textContent = projectName;
+                taskProjectSelect.appendChild(opt);
+                taskProjectSelect.value = projectName;
+            }
+        }
+    });
+}
+
 window.moveTask = async function(id, direction, slot) {
     try {
         const q = query(collection(db, "tasks"), where("date", "==", selectedDateStr), where("time", "==", slot));
