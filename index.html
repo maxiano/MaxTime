@@ -8,30 +8,38 @@
     <meta name="theme-color" content="#4f46e5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root { 
-            --primary: #4f46e5; 
-            --primary-hover: #4338ca;
+            --primary: #6366f1; 
+            --primary-hover: #4f46e5;
+            --primary-light: #e0e7ff;
             --bg: #f8fafc; 
             --card: #ffffff; 
-            --text: #0f172a; 
+            --text: #090d16; 
             --text-muted: #64748b;
             --border: #e2e8f0; 
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+            --shadow-md: 0 10px 25px -5px rgba(99, 102, 241, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+            --shadow-lg: 0 20px 35px -10px rgba(99, 102, 241, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body { 
-            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
             background: var(--bg); 
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.04) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.03) 0px, transparent 50%);
             color: var(--text); 
             margin: 0; 
-            padding: 24px 16px; 
+            padding: 32px 16px; 
             display: flex; 
             justify-content: center; 
             -webkit-font-smoothing: antialiased;
@@ -39,28 +47,39 @@
 
         .container { 
             width: 100%; 
-            max-width: 700px; 
+            max-width: 720px; 
         }
 
         h1 { 
-            font-size: 1.6rem; 
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            margin-bottom: 1.25rem; 
+            font-size: 1.8rem; 
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 1.5rem; 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
             color: var(--text);
         }
+
+        h1 span {
+            background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
         
         .card { 
             background: var(--card); 
-            padding: 20px; 
+            padding: 22px; 
             border-radius: var(--radius-lg); 
             box-shadow: var(--shadow-md); 
-            border: 1px solid var(--border);
+            border: 1px solid rgba(226, 232, 240, 0.8);
             margin-bottom: 16px; 
-            transition: box-shadow 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(203, 213, 225, 0.8);
         }
         
         /* Navigazione Data */
@@ -68,13 +87,15 @@
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
-            gap: 10px; 
-            padding: 12px 16px;
+            gap: 12px; 
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
         }
         .date-nav input[type="date"] { 
             font-size: 0.95rem; 
-            font-weight: 600;
-            padding: 10px; 
+            font-weight: 700;
+            padding: 10px 14px; 
             border: 1px solid var(--border); 
             border-radius: var(--radius-sm); 
             text-align: center; 
@@ -83,25 +104,31 @@
             background: #f8fafc;
             color: var(--text);
             cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .date-nav input[type="date"]:hover {
+            background: #f1f5f9;
         }
         .date-nav input[type="date"]:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
         }
         .nav-btn { 
-            background: #f1f5f9; 
-            color: var(--text); 
+            background: #f8fafc; 
+            color: var(--text-muted); 
             border: 1px solid var(--border); 
-            padding: 10px 14px; 
+            padding: 10px 16px; 
             border-radius: var(--radius-sm); 
             cursor: pointer; 
-            font-weight: 600; 
-            transition: all 0.15s ease;
+            font-weight: 700; 
+            transition: all 0.2s ease;
         }
         .nav-btn:hover { 
-            background: #e2e8f0; 
+            background: var(--primary-light); 
             color: var(--primary);
+            border-color: #c7d2fe;
         }
 
         /* Action bar per azioni rapide */
@@ -114,91 +141,98 @@
             background: #ffffff; 
             color: var(--text-muted); 
             border: 1px solid var(--border); 
-            padding: 8px 14px; 
+            padding: 9px 16px; 
             border-radius: var(--radius-sm); 
             font-size: 0.85rem; 
             cursor: pointer; 
-            font-weight: 500; 
-            box-shadow: var(--shadow-sm);
-            transition: all 0.15s ease;
+            font-weight: 600; 
+            box-shadow: var(--shadow-subtle);
+            transition: all 0.2s ease;
         }
         .secondary-btn:hover { 
             background: #f8fafc; 
             color: var(--text); 
-            border-color: #cbd5e1;
+            border-color: #94a3b8;
+            transform: translateY(-1px);
         }
 
         /* Form Time Blocking con Progetti e Priorità */
-        form { display: flex; flex-direction: column; gap: 12px; }
-        .form-row { display: grid; grid-template-columns: 110px 130px 1fr; gap: 10px; }
-        .form-row-secondary { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; }
-        @media(max-width: 600px) { 
+        form { display: flex; flex-direction: column; gap: 14px; }
+        .form-row { display: grid; grid-template-columns: 120px 140px 1fr; gap: 12px; }
+        .form-row-secondary { display: grid; grid-template-columns: 1fr 150px auto; gap: 12px; }
+        @media(max-width: 650px) { 
             .form-row { grid-template-columns: 1fr; } 
             .form-row-secondary { grid-template-columns: 1fr; }
         }
         
         input, select { 
-            padding: 11px 14px; 
+            padding: 12px 16px; 
             border: 1px solid var(--border); 
             border-radius: var(--radius-sm); 
             font-size: 0.925rem; 
-            background: #fff; 
+            background: #fdfdfd; 
             font-family: inherit; 
             color: var(--text);
-            transition: all 0.15s ease;
+            transition: all 0.2s ease;
+        }
+        input:hover, select:hover {
+            border-color: #cbd5e1;
         }
         input:focus, select:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
         }
         
         button[type="submit"] { 
             background: var(--primary); 
             color: white; 
             border: none; 
-            padding: 11px 20px; 
+            padding: 12px 24px; 
             border-radius: var(--radius-sm); 
             cursor: pointer; 
-            font-weight: 600; 
-            box-shadow: var(--shadow-sm);
-            transition: background 0.15s ease, transform 0.1s ease;
+            font-weight: 700; 
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
         button[type="submit"]:hover { 
             background: var(--primary-hover); 
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+            transform: translateY(-1px);
         }
         button[type="submit"]:active {
-            transform: scale(0.98);
+            transform: translateY(0);
         }
 
         /* Badge Categorie e Progetti */
         .badge { 
             font-size: 0.7rem; 
-            padding: 3px 8px; 
-            border-radius: 20px; 
-            font-weight: 650; 
+            padding: 4px 10px; 
+            border-radius: 30px; 
+            font-weight: 700; 
             text-transform: uppercase; 
-            letter-spacing: 0.05em;
-            margin-right: 6px; 
+            letter-spacing: 0.06em;
+            margin-right: 8px; 
             white-space: nowrap; 
             display: inline-flex;
             align-items: center;
         }
-        .badge-lavoro { background: #e0e7ff; color: #3730a3; }
-        .badge-sport { background: #dcfce7; color: #166534; }
-        .badge-personale { background: #f3e8ff; color: #6b21a8; }
-        .badge-urgente { background: #fee2e2; color: #991b1b; }
+        .badge-lavoro { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
+        .badge-sport { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .badge-personale { background: #fae8ff; color: #701a75; border: 1px solid #f5d0fe; }
+        .badge-urgente { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         
         /* Badge Progetto */
-        .badge-project { background: #f1f5f9; color: #475569; font-size: 0.7rem; border: 1px solid var(--border); margin-right: 6px; }
+        .badge-project { background: #f1f5f9; color: #334155; font-size: 0.7rem; border: 1px solid var(--border); margin-right: 8px; font-weight: 600; }
 
         /* Filtri Rapidi per Categoria */
         .filter-bar { 
             display: flex; 
-            gap: 8px; 
+            gap: 10px; 
             margin-bottom: 20px; 
             overflow-x: auto; 
-            padding-bottom: 4px; 
+            padding-bottom: 6px; 
             scrollbar-width: none;
         }
         .filter-bar::-webkit-scrollbar { display: none; }
@@ -206,82 +240,90 @@
         .filter-chip { 
             background: #fff; 
             border: 1px solid var(--border); 
-            padding: 8px 16px; 
+            padding: 9px 18px; 
             border-radius: 30px; 
             font-size: 0.85rem; 
-            font-weight: 600; 
+            font-weight: 700; 
             cursor: pointer; 
             color: var(--text-muted); 
             white-space: nowrap; 
-            box-shadow: var(--shadow-sm);
-            transition: all 0.15s ease;
+            box-shadow: var(--shadow-subtle);
+            transition: all 0.2s ease;
         }
         .filter-chip:hover { 
             background: #f8fafc; 
             color: var(--text);
-            border-color: #cbd5e1;
+            border-color: #94a3b8;
         }
         .filter-chip.active { 
             background: var(--primary); 
             color: white; 
             border-color: var(--primary); 
-            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
         }
 
         /* Taccuino / Brain Dump */
         .note-card { 
-            background: linear-gradient(to bottom right, #fffbeb, #fef3c7); 
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); 
             border: 1px solid #fde68a; 
         }
         .note-header { 
-            font-weight: 650; 
+            font-weight: 700; 
             font-size: 0.9rem; 
             color: #92400e; 
-            margin-bottom: 10px; 
+            margin-bottom: 12px; 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
         }
         .note-textarea { 
             width: 100%; 
-            min-height: 90px; 
-            padding: 12px; 
+            min-height: 100px; 
+            padding: 14px; 
             border: 1px solid #fcd34d; 
             border-radius: var(--radius-sm); 
             font-family: inherit; 
             font-size: 0.9rem; 
-            background: rgba(255, 255, 255, 0.7); 
+            background: rgba(255, 255, 255, 0.8); 
             resize: vertical; 
             box-sizing: border-box; 
             color: #78350f;
+            transition: all 0.2s ease;
         }
         .note-textarea:focus {
             outline: none;
             background: #ffffff;
             border-color: #f59e0b;
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
         }
         .note-status { 
             font-size: 0.75rem; 
             color: #b45309; 
-            font-weight: 500; 
+            font-weight: 600; 
+            background: rgba(251, 191, 36, 0.2);
+            padding: 3px 8px;
+            border-radius: 20px;
         }
 
         /* Lista dei blocchi orari & Priorità */
         .time-block { 
-            margin-bottom: 16px; 
+            margin-bottom: 18px; 
             border: 1px solid var(--border); 
             border-radius: var(--radius-md); 
             overflow: hidden; 
             background: #fff; 
-            box-shadow: var(--shadow-sm);
+            box-shadow: var(--shadow-subtle);
+            transition: all 0.2s ease;
+        }
+        .time-block:hover {
+            box-shadow: var(--shadow-md);
         }
         .time-header { 
             background: #f8fafc; 
-            padding: 10px 16px; 
-            font-weight: 650; 
+            padding: 12px 18px; 
+            font-weight: 800; 
             font-size: 0.85rem; 
-            letter-spacing: 0.025em;
+            letter-spacing: 0.04em;
             color: var(--text-muted); 
             border-bottom: 1px solid var(--border); 
             display: flex;
@@ -293,10 +335,10 @@
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
-            padding: 12px 16px; 
+            padding: 14px 18px; 
             border-bottom: 1px solid #f1f5f9; 
-            border-left: 4px solid transparent; 
-            transition: background 0.1s ease;
+            border-left: 5px solid transparent; 
+            transition: background 0.15s ease;
         }
         li:hover {
             background: #f8fafc;
@@ -309,18 +351,18 @@
         li[data-priority="bassa"] { border-left-color: #3b82f6; }
 
         li.completed span.task-text { text-decoration: line-through; color: #94a3b8; }
-        .task-content { display: flex; align-items: center; flex: 1; cursor: pointer; flex-wrap: wrap; gap: 6px; }
-        .task-text { font-size: 0.95rem; font-weight: 500; color: var(--text); }
+        .task-content { display: flex; align-items: center; flex: 1; cursor: pointer; flex-wrap: wrap; gap: 8px; }
+        .task-text { font-size: 0.95rem; font-weight: 600; color: var(--text); }
         
         .delete-btn { 
             background: transparent; 
             color: #94a3b8; 
             border: none; 
-            padding: 6px; 
+            padding: 8px; 
             font-size: 0.85rem; 
             border-radius: var(--radius-sm); 
             cursor: pointer; 
-            transition: all 0.15s ease;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -330,14 +372,14 @@
             color: #ef4444; 
         }
         
-        .empty-slot { padding: 14px 16px; color: #94a3b8; font-size: 0.9rem; font-style: italic; }
-        .task-deadline { font-size: 0.75rem; color: #64748b; margin-left: 6px; }
+        .empty-slot { padding: 16px 18px; color: #94a3b8; font-size: 0.9rem; font-style: italic; font-weight: 500; }
+        .task-deadline { font-size: 0.75rem; color: #64748b; margin-left: 6px; font-weight: 500; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1><span>📅 DayFlow</span></h1>
+        <h1><span>DayFlow</span> 📅</h1>
         
         <!-- Bar Delle Date -->
         <div class="card date-nav">
@@ -361,7 +403,7 @@
             <form id="task-form">
                 <div class="form-row">
                     <select id="task-time" required>
-                        <option value="" disabled selected>Ora</option>
+                        <option value="" disabled selected>Seleziona Ora</option>
                         <option value="08:00">08:00</option>
                         <option value="09:00">09:00</option>
                         <option value="10:00">10:00</option>
@@ -385,26 +427,26 @@
                         <option value="urgente">Urgente</option>
                     </select>
 
-                    <input type="text" id="task-input" placeholder="Attività o blocco..." required autocomplete="off">
+                    <input type="text" id="task-input" placeholder="Cosa devi fare?" required autocomplete="off">
                 </div>
 
                 <div class="form-row-secondary">
                     <!-- Selettore Progetto con tasto "+" per aggiunta rapida -->
-                    <div style="display: flex; gap: 6px;">
+                    <div style="display: flex; gap: 8px;">
                         <select id="task-project" style="flex: 1;">
                             <option value="">Nessun Progetto</option>
                             <option value="Spes Montesacro">Spes Montesacro</option>
                             <option value="Amministrazione">Amministrazione</option>
                             <option value="Sviluppo PWA">Sviluppo PWA</option>
                         </select>
-                        <button type="button" id="add-project-btn" class="secondary-btn" title="Aggiungi nuovo progetto" style="padding: 10px 14px; font-weight: 700;">+</button>
+                        <button type="button" id="add-project-btn" class="secondary-btn" title="Aggiungi nuovo progetto" style="padding: 12px 16px; font-weight: 800;">+</button>
                     </div>
 
                     <!-- Selettore Priorità -->
                     <select id="task-priority">
-                        <option value="bassa">Priorità Bassa</option>
-                        <option value="media" selected>Priorità Media</option>
-                        <option value="alta">Priorità Alta</option>
+                        <option value="bassa">Bassa</option>
+                        <option value="media" selected>Media</option>
+                        <option value="alta">Alta</option>
                     </select>
 
                     <button type="submit">Pianifica</button>
