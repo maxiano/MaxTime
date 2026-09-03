@@ -55,7 +55,7 @@ let unsubscribeTasks = null;
 let unsubscribeNote = null;
 let isSavingNote = false;
 let saveTimeout = null;
-let latestGroupedTasks = {}; // Memorizza i dati grezzi per poterli ri-filtrare istantaneamente
+let latestGroupedTasks = {}; 
 
 function updateDateUI() {
     datePicker.value = selectedDateStr;
@@ -84,7 +84,6 @@ function listenToTasksForDate(dateStr) {
             groupedTasks[slot].push({ id, ...task });
         });
 
-        // Ordinamento per 'order'
         Object.keys(groupedTasks).forEach(slot => {
             groupedTasks[slot].sort((a, b) => {
                 const orderA = a.order !== undefined ? a.order : 0;
@@ -114,14 +113,14 @@ function listenToNoteForDate(dateStr) {
             dailyNote.value = "";
         }
         isSavingNote = false;
-        noteStatus.textContent = "Salvato";
+        noteStatus.innerHTML = '<span class="status-dot synced"></span> Salvato';
     });
 }
 
 dailyNote.addEventListener('input', () => {
     if (isSavingNote) return;
     
-    noteStatus.textContent = "Modifiche...";
+    noteStatus.innerHTML = '<span class="status-dot saving"></span> Salvataggio...';
     clearTimeout(saveTimeout);
 
     saveTimeout = setTimeout(async () => {
@@ -133,22 +132,21 @@ dailyNote.addEventListener('input', () => {
                 content: content,
                 updatedAt: new Date()
             }, { merge: true });
-            noteStatus.textContent = "Salvato";
+            noteStatus.innerHTML = '<span class="status-dot synced"></span> Salvato';
         } catch (error) {
             console.error("Errore salvataggio nota:", error);
-            noteStatus.textContent = "Errore salvataggio";
+            noteStatus.innerHTML = '<span class="status-dot error"></span> Errore';
         }
     }, 800);
 });
 
-// Rendering dei blocchi applicando il filtro attivo e mostrando progetti/priorità
+// Rendering dei blocchi con grafica migliorata, icone e indicatori di priorità visivi
 function renderSchedule() {
     scheduleContainer.innerHTML = '';
     
     timeSlots.forEach(slot => {
         const tasksInSlot = latestGroupedTasks[slot] || [];
         
-        // Filtra i task in base alla categoria selezionata
         const filteredTasks = tasksInSlot.filter(t => {
             if (currentFilter === 'all') return true;
             return (t.category || 'lavoro') === currentFilter;
@@ -165,29 +163,38 @@ function renderSchedule() {
         if (filteredTasks.length === 0) {
             tasksHtml = `<div class="empty-slot">Nessun impegno pianificato</div>`;
         } else {
-            tasksHtml = `<ul>` + filteredTasks.map((t) => {
+            tasksHtml = `<ul class="task-list">` + filteredTasks.map((t) => {
                 const category = t.category || 'lavoro';
                 const priority = t.priority || 'media';
-                const project = t.project ? `<span class="badge badge-project">${t.project}</span>` : '';
+                const project = t.project ? `<span class="badge badge-project">📁 ${t.project}</span>` : '';
                 
                 return `
-                <li class="${t.completed ? 'completed' : ''}" data-priority="${priority}">
-                    <div style="display:flex; flex-direction:column; margin-right: 6px;">
-                        <button style="background:none; border:none; cursor:pointer; font-size:0.6rem; color:#9ca3af; padding:0;" onclick="moveTask('${t.id}', 'up', '${slot}')">▲</button>
-                        <button style="background:none; border:none; cursor:pointer; font-size:0.6rem; color:#9ca3af; padding:0;" onclick="moveTask('${t.id}', 'down', '${slot}')">▼</button>
+                <li class="task-item ${t.completed ? 'completed' : ''}" data-priority="${priority}">
+                    <div class="task-reorder">
+                        <button class="reorder-btn" title="Sposta su" onclick="moveTask('${t.id}', 'up', '${slot}')">▲</button>
+                        <button class="reorder-btn" title="Sposta giù" onclick="moveTask('${t.id}', 'down', '${slot}')">▼</button>
                     </div>
                     <div class="task-content" onclick="toggleTask('${t.id}', ${t.completed})">
-                        <span class="badge badge-${category}">${category}</span>
-                        ${project}
+                        <div class="task-badges">
+                            <span class="badge badge-${category}">${category}</span>
+                            ${project}
+                            <span class="priority-indicator priority-${priority}" title="Priorità: ${priority}"></span>
+                        </div>
                         <span class="task-text">${t.text}</span>
                     </div>
-                    <button class="delete-btn" onclick="deleteTask('${t.id}')">✕</button>
+                    <button class="delete-btn" title="Elimina task" onclick="deleteTask('${t.id}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
                 </li>`;
             }).join('') + `</ul>`;
         }
 
+        const slotTitle = slot === "Inbox" ? "📥 Coda / Senza Orario" : `⏰ ${slot}`;
         blockDiv.innerHTML = `
-            <div class="time-header">${slot === "Inbox" ? "📥 Coda / Senza Orario" : "⏰ " + slot}</div>
+            <div class="time-header">
+                <span class="slot-title">${slotTitle}</span>
+                <span class="slot-count">${filteredTasks.length}</span>
+            </div>
             ${tasksHtml}
         `;
         
@@ -195,11 +202,13 @@ function renderSchedule() {
     });
 
     if (scheduleContainer.innerHTML === '') {
-        scheduleContainer.innerHTML = `<div class="card" style="text-align:center; color:#9ca3af; font-style:italic;">Nessun impegno trovato per la categoria "${currentFilter}" in questa giornata.</div>`;
+        scheduleContainer.innerHTML = `
+            <div class="empty-state-card">
+                <p>Nessun impegno trovato per la categoria <strong>"${currentFilter}"</strong> in questa giornata.</p>
+            </div>`;
     }
 }
 
-// Gestione click sui chip di filtro
 filterChips.forEach(chip => {
     chip.addEventListener('click', (e) => {
         filterChips.forEach(c => c.classList.remove('active'));
@@ -209,7 +218,6 @@ filterChips.forEach(chip => {
     });
 });
 
-// Aggiungere un Task salvando anche Progetto e Priorità
 taskForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = taskInput.value.trim();
@@ -236,7 +244,6 @@ taskForm.addEventListener('submit', async (e) => {
             createdAt: new Date()
         });
         
-        // Reset dei campi di input testuali e opzioni
         taskInput.value = '';
         if (taskTime) taskTime.value = '';
         if (taskCategory) taskCategory.value = 'lavoro';
@@ -247,7 +254,6 @@ taskForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Gestione aggiunta nuovo progetto tramite prompt rapido
 const addProjectBtn = document.getElementById('add-project-btn');
 const taskProjectSelect = document.getElementById('task-project');
 
@@ -257,7 +263,6 @@ if (addProjectBtn && taskProjectSelect) {
         if (newProjectName && newProjectName.trim() !== "") {
             const projectName = newProjectName.trim();
             
-            // Verifica se il progetto esiste già per evitare duplicati
             let exists = false;
             for (let i = 0; i < taskProjectSelect.options.length; i++) {
                 if (taskProjectSelect.options[i].value.toLowerCase() === projectName.toLowerCase()) {
@@ -269,7 +274,6 @@ if (addProjectBtn && taskProjectSelect) {
             if (exists) {
                 alert("Questo progetto esiste già!");
             } else {
-                // Crea la nuova option e la seleziona
                 const opt = document.createElement('option');
                 opt.value = projectName;
                 opt.textContent = projectName;
