@@ -114,14 +114,14 @@ function listenToNoteForDate(dateStr) {
             dailyNote.value = "";
         }
         isSavingNote = false;
-        noteStatus.innerHTML = '<span class="status-dot synced"></span> Salvato';
+        noteStatus.textContent = "Sincronizzato";
     });
 }
 
 dailyNote.addEventListener('input', () => {
     if (isSavingNote) return;
      
-    noteStatus.innerHTML = '<span class="status-dot saving"></span> Salvataggio...';
+    noteStatus.textContent = "Salvataggio...";
     clearTimeout(saveTimeout);
 
     saveTimeout = setTimeout(async () => {
@@ -133,10 +133,10 @@ dailyNote.addEventListener('input', () => {
                 content: content,
                 updatedAt: new Date()
             }, { merge: true });
-            noteStatus.innerHTML = '<span class="status-dot synced"></span> Salvato';
+            noteStatus.textContent = "Sincronizzato";
         } catch (error) {
             console.error("Errore salvataggio nota:", error);
-            noteStatus.innerHTML = '<span class="status-dot error"></span> Errore';
+            noteStatus.textContent = "Errore";
         }
     }, 800);
 });
@@ -168,19 +168,20 @@ function renderSchedule() {
                 const category = t.category || 'lavoro';
                 const priority = t.priority || 'media';
                 const project = t.project ? `<span class="badge badge-project">📁 ${t.project}</span>` : '';
-                const resolution = t.resolution ? `<span class="resolution-tag" onclick="editResolution('${t.id}', '${t.resolution.replace(/'/g, "\\'")}')" title="Clicca per modificare l'esito">⚡ ${t.resolution}</span>` : `<span class="resolution-tag" style="opacity:0.4; border-style:dashed;" onclick="editResolution('${t.id}', '')" title="Aggiungi esito pratico">+ Esito</span>`;
+                const resolution = t.resolution 
+                    ? `<span class="resolution-tag" onclick="editResolution('${t.id}', '${t.resolution.replace(/'/g, "\\'")}')" title="Clicca per modificare l'esito">⚡ ${t.resolution}</span>` 
+                    : `<span class="resolution-tag" style="opacity:0.4; border-style:dashed;" onclick="editResolution('${t.id}', '')" title="Aggiungi esito pratico">+ Esito</span>`;
                  
                 return `
                 <li class="task-item ${t.completed ? 'completed' : ''}" data-priority="${priority}">
-                    <div class="task-reorder">
-                        <button class="reorder-btn" title="Sposta su" onclick="moveTask('${t.id}', 'up', '${slot}')">▲</button>
-                        <button class="reorder-btn" title="Sposta giù" onclick="moveTask('${t.id}', 'down', '${slot}')">▼</button>
+                    <div class="task-reorder" style="display: flex; flex-direction: column; gap: 2px; margin-right: 8px;">
+                        <button class="reorder-btn" title="Sposta su" style="background:none; border:none; cursor:pointer; font-size:10px; color:#94a3b8;" onclick="moveTask('${t.id}', 'up', '${slot}')">▲</button>
+                        <button class="reorder-btn" title="Sposta giù" style="background:none; border:none; cursor:pointer; font-size:10px; color:#94a3b8;" onclick="moveTask('${t.id}', 'down', '${slot}')">▼</button>
                     </div>
                     <div class="task-content" onclick="toggleTask('${t.id}', ${t.completed})">
-                        <div class="task-badges">
+                        <div class="task-badges" style="display:inline-flex; align-items:center; gap:6px;">
                             <span class="badge badge-${category}">${category}</span>
                             ${project}
-                            <span class="priority-indicator priority-${priority}" title="Priorità: ${priority}"></span>
                         </div>
                         <span class="task-text">${t.text}</span>
                         ${resolution}
@@ -206,7 +207,7 @@ function renderSchedule() {
 
     if (scheduleContainer.innerHTML === '') {
         scheduleContainer.innerHTML = `
-            <div class="empty-state-card">
+            <div class="empty-state-card" style="padding:20px; text-align:center; color:#64748b;">
                 <p>Nessun impegno trovato per la categoria <strong>"${currentFilter}"</strong> in questa giornata.</p>
             </div>`;
     }
@@ -228,7 +229,7 @@ taskForm.addEventListener('submit', async (e) => {
     const category = taskCategory ? taskCategory.value : "lavoro";
     const project = taskProject ? taskProject.value : "";
     const priority = taskPriority ? taskPriority.value : "media";
-    const resolution = taskResolution ? taskResolution.value.trim() : ""; // Cattura l'esito/risoluzione inserito
+    const resolution = taskResolution ? taskResolution.value.trim() : "";
     
     if (!text) return;
 
@@ -243,7 +244,7 @@ taskForm.addEventListener('submit', async (e) => {
             category: category,
             project: project,
             priority: priority,
-            resolution: resolution, // Salvataggio su Firestore
+            resolution: resolution,
             date: selectedDateStr,
             order: nextOrder,
             completed: false,
@@ -255,7 +256,7 @@ taskForm.addEventListener('submit', async (e) => {
         if (taskCategory) taskCategory.value = 'lavoro';
         if (taskProject) taskProject.value = '';
         if (taskPriority) taskPriority.value = 'media';
-        if (taskResolution) taskResolution.value = ''; // Reset del campo esito/risoluzione dopo l'invio
+        if (taskResolution) taskResolution.value = '';
     } catch (error) {
         console.error("Errore aggiunta task:", error);
     }
@@ -331,6 +332,8 @@ window.moveTask = async function(id, direction, slot) {
         await updateDoc(doc(db, "tasks", tasks[currentIndex].id), { order: tasks[currentIndex].order });
         await updateDoc(doc(db, "tasks", tasks[targetIndex].id), { order: tasks[targetIndex].order });
 
+        // Forza un refresh immediato del rendering locale per reattività visiva
+        renderSchedule();
     } catch (error) {
         console.error("Errore nello spostamento task:", error);
     }
@@ -384,19 +387,21 @@ todayBtn.addEventListener('click', () => {
     updateDateUI();
 });
 
+// Funzione globale per eliminare il task
 window.deleteTask = async function(id) {
     try {
         await deleteDoc(doc(db, "tasks", id));
     } catch (error) {
-        console.error("Errore eliminazione:", error);
+        console.error("Errore eliminazione task:", error);
     }
 };
 
+// Funzione globale per completare/segnare come fatto il task
 window.toggleTask = async function(id, currentStatus) {
     try {
         await updateDoc(doc(db, "tasks", id), { completed: !currentStatus });
     } catch (error) {
-        console.error("Errore aggiornamento:", error);
+        console.error("Errore aggiornamento completamento task:", error);
     }
 };
 
