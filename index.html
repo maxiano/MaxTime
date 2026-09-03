@@ -25,19 +25,27 @@
         .secondary-btn { background: #f3f4f6; color: #4b5563; border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-weight: 500; }
         .secondary-btn:hover { background: #e5e7eb; color: var(--text); }
 
-        /* Form Time Blocking con Categoria */
-        form { display: grid; grid-template-columns: 100px 110px 1fr auto; gap: 8px; }
-        @media(max-width: 600px) { form { grid-template-columns: 1fr; } }
-        input, select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; background: #fff; }
+        /* Form Time Blocking con Progetti e Priorità */
+        form { display: flex; flex-direction: column; gap: 10px; }
+        .form-row { display: grid; grid-template-columns: 100px 110px 1fr; gap: 8px; }
+        .form-row-secondary { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+        @media(max-width: 600px) { 
+            .form-row { grid-template-columns: 1fr; } 
+            .form-row-secondary { grid-template-columns: 1fr; }
+        }
+        input, select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; background: #fff; font-family: inherit; }
         button[type="submit"] { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
         button[type="submit"]:hover { opacity: 0.9; }
 
-        /* Badge Categorie */
-        .badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; text-transform: uppercase; margin-right: 8px; white-space: nowrap; }
+        /* Badge Categorie e Progetti */
+        .badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; text-transform: uppercase; margin-right: 6px; white-space: nowrap; }
         .badge-lavoro { background: #e0e7ff; color: #3730a3; }
         .badge-sport { background: #dcfce7; color: #166534; }
         .badge-personale { background: #f3e8ff; color: #6b21a8; }
         .badge-urgente { background: #fee2e2; color: #991b1b; }
+        
+        /* Badge Progetto */
+        .badge-project { background: #e2e8f0; color: #334155; font-size: 0.7rem; margin-right: 6px; }
 
         /* Filtri Rapidi per Categoria */
         .filter-bar { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
@@ -51,16 +59,23 @@
         .note-textarea { width: 100%; min-height: 80px; padding: 10px; border: 1px solid #fcd34d; border-radius: 8px; font-family: inherit; font-size: 0.9rem; background: #fffdf9; resize: vertical; box-sizing: border-box; }
         .note-status { font-size: 0.75rem; color: #d97706; font-weight: normal; }
 
-        /* Lista dei blocchi orari */
+        /* Lista dei blocchi orari & Priorità */
         .time-block { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
         .time-header { background: #f3f4f6; padding: 8px 12px; font-weight: 600; font-size: 0.9rem; color: #4b5563; border-bottom: 1px solid var(--border); }
         ul { list-style: none; padding: 0; margin: 0; }
-        li { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f9fafb; }
+        li { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f9fafb; border-left: 4px solid transparent; }
         li:last-child { border-bottom: none; }
+        
+        /* Indicatori visivi di priorità sui task */
+        li[data-priority="alta"] { border-left-color: #ef4444; }
+        li[data-priority="media"] { border-left-color: #f59e0b; }
+        li[data-priority="bassa"] { border-left-color: #3b82f6; }
+
         li.completed span.task-text { text-decoration: line-through; color: #9ca3af; }
-        .task-content { display: flex; align-items: center; flex: 1; cursor: pointer; }
+        .task-content { display: flex; align-items: center; flex: 1; cursor: pointer; flex-wrap: wrap; gap: 4px; }
         .delete-btn { background: #ef4444; color: white; border: none; padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; }
         .empty-slot { padding: 10px 12px; color: #9ca3af; font-size: 0.9rem; font-style: italic; }
+        .task-deadline { font-size: 0.75rem; color: #6b7280; margin-left: 6px; }
     </style>
 </head>
 <body>
@@ -85,36 +100,56 @@
             <textarea id="daily-note" class="note-textarea" placeholder="Scrivi qui idee al volo, appunti o promemoria liberi per questa giornata..."></textarea>
         </div>
 
-        <!-- Form Aggiunta Task con Orario e Categoria -->
+        <!-- Form Aggiunta Task con Orario, Categoria, Progetto e Priorità -->
         <div class="card">
             <form id="task-form">
-                <select id="task-time" required>
-                    <option value="" disabled selected>Ora</option>
-                    <option value="08:00">08:00</option>
-                    <option value="09:00">09:00</option>
-                    <option value="10:00">10:00</option>
-                    <option value="11:00">11:00</option>
-                    <option value="12:00">12:00</option>
-                    <option value="13:00">13:00</option>
-                    <option value="14:00">14:00</option>
-                    <option value="15:00">15:00</option>
-                    <option value="16:00">16:00</option>
-                    <option value="17:00">17:00</option>
-                    <option value="18:00">18:00</option>
-                    <option value="19:00">19:00</option>
-                    <option value="20:00">20:00</option>
-                    <option value="Inbox">Inbox</option>
-                </select>
+                <div class="form-row">
+                    <select id="task-time" required>
+                        <option value="" disabled selected>Ora</option>
+                        <option value="08:00">08:00</option>
+                        <option value="09:00">09:00</option>
+                        <option value="10:00">10:00</option>
+                        <option value="11:00">11:00</option>
+                        <option value="12:00">12:00</option>
+                        <option value="13:00">13:00</option>
+                        <option value="14:00">14:00</option>
+                        <option value="15:00">15:00</option>
+                        <option value="16:00">16:00</option>
+                        <option value="17:00">17:00</option>
+                        <option value="18:00">18:00</option>
+                        <option value="19:00">19:00</option>
+                        <option value="20:00">20:00</option>
+                        <option value="Inbox">Inbox</option>
+                    </select>
 
-                <select id="task-category">
-                    <option value="lavoro" selected>Lavoro</option>
-                    <option value="sport">Sport</option>
-                    <option value="personale">Personale</option>
-                    <option value="urgente">Urgente</option>
-                </select>
+                    <select id="task-category">
+                        <option value="lavoro" selected>Lavoro</option>
+                        <option value="sport">Sport</option>
+                        <option value="personale">Personale</option>
+                        <option value="urgente">Urgente</option>
+                    </select>
 
-                <input type="text" id="task-input" placeholder="Attività o blocco..." required autocomplete="off">
-                <button type="submit">Pianifica</button>
+                    <input type="text" id="task-input" placeholder="Attività o blocco..." required autocomplete="off">
+                </div>
+
+                <div class="form-row-secondary">
+                    <!-- Selettore Progetto (personalizzabile) -->
+                    <select id="task-project">
+                        <option value="">Nessun Progetto</option>
+                        <option value="Spes Montesacro">Spes Montesacro</option>
+                        <option value="Amministrazione">Amministrazione</option>
+                        <option value="Sviluppo PWA">Sviluppo PWA</option>
+                    </select>
+
+                    <!-- Selettore Priorità -->
+                    <select id="task-priority">
+                        <option value="bassa">Priorità Bassa</option>
+                        <option value="media" selected>Priorità Media</option>
+                        <option value="alta">Priorità Alta</option>
+                    </select>
+
+                    <button type="submit">Pianifica</button>
+                </div>
             </form>
         </div>
 
