@@ -133,13 +133,16 @@
                 </div>
 
                 <div class="form-row-secondary">
-                    <!-- Selettore Progetto (personalizzabile) -->
-                    <select id="task-project">
-                        <option value="">Nessun Progetto</option>
-                        <option value="Spes Montesacro">Spes Montesacro</option>
-                        <option value="Amministrazione">Amministrazione</option>
-                        <option value="Sviluppo PWA">Sviluppo PWA</option>
-                    </select>
+                    <!-- Selettore Progetto con tasto "+" per aggiunta rapida -->
+                    <div style="display: flex; gap: 4px;">
+                        <select id="task-project" style="flex: 1;">
+                            <option value="">Nessun Progetto</option>
+                            <option value="Spes Montesacro">Spes Montesacro</option>
+                            <option value="Amministrazione">Amministrazione</option>
+                            <option value="Sviluppo PWA">Sviluppo PWA</option>
+                        </select>
+                        <button type="button" id="add-project-btn" class="secondary-btn" title="Aggiungi nuovo progetto" style="padding: 10px 12px;">+</button>
+                    </div>
 
                     <!-- Selettore Priorità -->
                     <select id="task-priority">
