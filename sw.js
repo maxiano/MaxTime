@@ -1,9 +1,9 @@
 const CACHE_NAME = 'dayflow-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/app.js',
-  '/manifest.json'
+  './',
+  './index.html',
+  './app.js',
+  './manifest.json'
 ];
 
 // Installazione Service Worker e salvataggio in cache
