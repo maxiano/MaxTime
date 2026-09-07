@@ -166,7 +166,6 @@ globalSearchInput.addEventListener('input', (e) => {
 
     searchTimeout = setTimeout(async () => {
         try {
-            // Legge tutti i task presenti nel db (per dataset piccoli/medi funziona perfettamente)
             const querySnapshot = await getDocs(collection(db, "tasks"));
             const results = [];
 
@@ -181,7 +180,6 @@ globalSearchInput.addEventListener('input', (e) => {
                 }
             });
 
-            // Mostra i risultati
             renderSearchResults(results, searchTerm);
         } catch (error) {
             console.error("Errore durante la ricerca globale:", error);
@@ -218,20 +216,17 @@ function renderSearchResults(results, term) {
     }).join('') + `</ul>`;
 }
 
-// Funzione globale per saltare alla data del task selezionato dalla ricerca
 window.jumpToTaskDate = function(dateStr) {
     selectedDateStr = dateStr;
     currentDate = new Date(selectedDateStr + "T00:00:00");
     updateDateUI();
     
-    // Chiude la ricerca e pulisce l'input
     searchResultsContainer.style.display = 'none';
     globalSearchInput.value = '';
     clearSearchBtn.style.display = 'none';
 };
 // ---------------------------------
 
-// Rendering dei blocchi con grafica, priorità, esito e data di scadenza
 function renderSchedule() {
     scheduleContainer.innerHTML = '';
      
@@ -323,6 +318,8 @@ taskForm.addEventListener('submit', async (e) => {
     const category = taskCategory ? taskCategory.value : "lavoro";
     const project = taskProject ? taskProject.value : "";
     const priority = taskPriority ? taskPriority.value : "media";
+    
+    // Lettura aggiornata della risoluzione/esito dal campo del form
     const resolution = taskResolution ? taskResolution.value.trim() : "";
     const deadline = taskDeadline ? taskDeadline.value : ""; 
     
@@ -339,7 +336,7 @@ taskForm.addEventListener('submit', async (e) => {
             category: category,
             project: project,
             priority: priority,
-            resolution: resolution,
+            resolution: resolution, // Salvataggio corretto della risoluzione
             deadline: deadline, 
             date: selectedDateStr,
             order: nextOrder,
@@ -347,6 +344,7 @@ taskForm.addEventListener('submit', async (e) => {
             createdAt: new Date()
         });
          
+        // Reset di tutti i campi, inclusa la risoluzione
         taskInput.value = '';
         if (taskTime) taskTime.value = '';
         if (taskCategory) taskCategory.value = 'lavoro';
