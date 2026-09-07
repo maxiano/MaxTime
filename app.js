@@ -42,14 +42,22 @@ const taskTime = document.getElementById('task-time');
 const taskCategory = document.getElementById('task-category');
 const taskProject = document.getElementById('task-project');
 const taskPriority = document.getElementById('task-priority');
-const taskResolution = document.getElementById('task-resolution'); // Campo Esito/Risoluzione
-const taskDeadline = document.getElementById('task-deadline');     // Campo Data di Scadenza (Nuovo)
+const taskResolution = document.getElementById('task-resolution'); 
+const taskDeadline = document.getElementById('task-deadline');     
 
 const scheduleContainer = document.getElementById('schedule-container');
 const filterChips = document.querySelectorAll('.filter-chip');
 
 const dailyNote = document.getElementById('daily-note');
 const noteStatus = document.getElementById('note-status');
+
+// Elementi della Barra di Ricerca Globale
+const globalSearchInput = document.getElementById('global-search-input');
+const clearSearchBtn = document.getElementById('clear-search-btn');
+const searchResultsContainer = document.getElementById('search-results-container');
+const searchResultsList = document.getElementById('search-results-list');
+const searchCountBadge = document.getElementById('search-count-badge');
+let searchTimeout = null;
 
 const timeSlots = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "Inbox"];
 
@@ -142,6 +150,87 @@ dailyNote.addEventListener('input', () => {
     }, 800);
 });
 
+// --- LOGICA DI RICERCA GLOBALE ---
+globalSearchInput.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.trim().toLowerCase();
+    
+    clearTimeout(searchTimeout);
+
+    if (searchTerm === "") {
+        clearSearchBtn.style.display = 'none';
+        searchResultsContainer.style.display = 'none';
+        return;
+    }
+
+    clearSearchBtn.style.display = 'block';
+
+    searchTimeout = setTimeout(async () => {
+        try {
+            // Legge tutti i task presenti nel db (per dataset piccoli/medi funziona perfettamente)
+            const querySnapshot = await getDocs(collection(db, "tasks"));
+            const results = [];
+
+            querySnapshot.forEach((docSnap) => {
+                const task = docSnap.data();
+                const text = (task.text || "").toLowerCase();
+                const project = (task.project || "").toLowerCase();
+                const resolution = (task.resolution || "").toLowerCase();
+
+                if (text.includes(searchTerm) || project.includes(searchTerm) || resolution.includes(searchTerm)) {
+                    results.push({ id: docSnap.id, ...task });
+                }
+            });
+
+            // Mostra i risultati
+            renderSearchResults(results, searchTerm);
+        } catch (error) {
+            console.error("Errore durante la ricerca globale:", error);
+        }
+    }, 300);
+});
+
+clearSearchBtn.addEventListener('click', () => {
+    globalSearchInput.value = '';
+    clearSearchBtn.style.display = 'none';
+    searchResultsContainer.style.display = 'none';
+});
+
+function renderSearchResults(results, term) {
+    searchResultsContainer.style.display = 'block';
+    searchCountBadge.textContent = `${results.length} trovati`;
+
+    if (results.length === 0) {
+        searchResultsList.innerHTML = `<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted); font-style: italic;">Nessun risultato trovato per "${term}".</div>`;
+        return;
+    }
+
+    searchResultsList.innerHTML = `<ul>` + results.map(t => {
+        return `
+            <li class="search-result-item" onclick="jumpToTaskDate('${t.date}')" style="cursor: pointer;">
+                <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                    <span class="search-meta">${t.date}</span>
+                    <span class="search-meta">⏰ ${t.time || 'Inbox'}</span>
+                    <span style="font-size: 0.9rem; font-weight: 500;">${t.text}</span>
+                </div>
+                <span class="badge badge-${t.category || 'lavoro'}">${t.category || 'lavoro'}</span>
+            </li>
+        `;
+    }).join('') + `</ul>`;
+}
+
+// Funzione globale per saltare alla data del task selezionato dalla ricerca
+window.jumpToTaskDate = function(dateStr) {
+    selectedDateStr = dateStr;
+    currentDate = new Date(selectedDateStr + "T00:00:00");
+    updateDateUI();
+    
+    // Chiude la ricerca e pulisce l'input
+    searchResultsContainer.style.display = 'none';
+    globalSearchInput.value = '';
+    clearSearchBtn.style.display = 'none';
+};
+// ---------------------------------
+
 // Rendering dei blocchi con grafica, priorità, esito e data di scadenza
 function renderSchedule() {
     scheduleContainer.innerHTML = '';
@@ -170,7 +259,6 @@ function renderSchedule() {
                 const priority = t.priority || 'media';
                 const project = t.project ? `<span class="badge badge-project">📁 ${t.project}</span>` : '';
                 
-                // Etichetta visiva per la data di scadenza
                 const deadlineTag = t.deadline ? `<span class="task-deadline" style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.7rem; color:#475569; margin-left:6px; border:1px solid #cbd5e1;">⏳ Scad: ${t.deadline}</span>` : '';
 
                 const resolution = t.resolution 
@@ -236,7 +324,7 @@ taskForm.addEventListener('submit', async (e) => {
     const project = taskProject ? taskProject.value : "";
     const priority = taskPriority ? taskPriority.value : "media";
     const resolution = taskResolution ? taskResolution.value.trim() : "";
-    const deadline = taskDeadline ? taskDeadline.value : ""; // Acquisite le informazioni di scadenza
+    const deadline = taskDeadline ? taskDeadline.value : ""; 
     
     if (!text) return;
 
@@ -252,14 +340,13 @@ taskForm.addEventListener('submit', async (e) => {
             project: project,
             priority: priority,
             resolution: resolution,
-            deadline: deadline, // Salvataggio su Firestore
+            deadline: deadline, 
             date: selectedDateStr,
             order: nextOrder,
             completed: false,
             createdAt: new Date()
         });
          
-        // Reset completo dei campi del form
         taskInput.value = '';
         if (taskTime) taskTime.value = '';
         if (taskCategory) taskCategory.value = 'lavoro';
@@ -302,7 +389,6 @@ if (addProjectBtn && taskProjectSelect) {
     });
 }
 
-// Funzione globale per modificare l'esito/risoluzione direttamente dalla lista task
 window.editResolution = async function(id, currentRes) {
     const newRes = prompt("Inserisci o aggiorna l'esito / risoluzione pratica:", currentRes === 'undefined' ? '' : currentRes);
     if (newRes !== null) {
@@ -396,7 +482,6 @@ todayBtn.addEventListener('click', () => {
     updateDateUI();
 });
 
-// Funzione globale per eliminare il task
 window.deleteTask = async function(id) {
     try {
         await deleteDoc(doc(db, "tasks", id));
@@ -405,7 +490,6 @@ window.deleteTask = async function(id) {
     }
 };
 
-// Funzione globale per completare/segnare come fatto il task
 window.toggleTask = async function(id, currentStatus) {
     try {
         await updateDoc(doc(db, "tasks", id), { completed: !currentStatus });
