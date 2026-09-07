@@ -42,7 +42,8 @@ const taskTime = document.getElementById('task-time');
 const taskCategory = document.getElementById('task-category');
 const taskProject = document.getElementById('task-project');
 const taskPriority = document.getElementById('task-priority');
-const taskResolution = document.getElementById('task-resolution'); // Nuovo campo Esito/Risoluzione
+const taskResolution = document.getElementById('task-resolution'); // Campo Esito/Risoluzione
+const taskDeadline = document.getElementById('task-deadline');     // Campo Data di Scadenza (Nuovo)
 
 const scheduleContainer = document.getElementById('schedule-container');
 const filterChips = document.querySelectorAll('.filter-chip');
@@ -141,7 +142,7 @@ dailyNote.addEventListener('input', () => {
     }, 800);
 });
 
-// Rendering dei blocchi con grafica migliorata, icone, priorità ed esito/risoluzione pratica
+// Rendering dei blocchi con grafica, priorità, esito e data di scadenza
 function renderSchedule() {
     scheduleContainer.innerHTML = '';
      
@@ -168,6 +169,10 @@ function renderSchedule() {
                 const category = t.category || 'lavoro';
                 const priority = t.priority || 'media';
                 const project = t.project ? `<span class="badge badge-project">📁 ${t.project}</span>` : '';
+                
+                // Etichetta visiva per la data di scadenza
+                const deadlineTag = t.deadline ? `<span class="task-deadline" style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.7rem; color:#475569; margin-left:6px; border:1px solid #cbd5e1;">⏳ Scad: ${t.deadline}</span>` : '';
+
                 const resolution = t.resolution 
                     ? `<span class="resolution-tag" onclick="editResolution('${t.id}', '${t.resolution.replace(/'/g, "\\'")}')" title="Clicca per modificare l'esito">⚡ ${t.resolution}</span>` 
                     : `<span class="resolution-tag" style="opacity:0.4; border-style:dashed;" onclick="editResolution('${t.id}', '')" title="Aggiungi esito pratico">+ Esito</span>`;
@@ -184,6 +189,7 @@ function renderSchedule() {
                             ${project}
                         </div>
                         <span class="task-text">${t.text}</span>
+                        ${deadlineTag}
                         ${resolution}
                     </div>
                     <button class="delete-btn" title="Elimina task" onclick="deleteTask('${t.id}')">
@@ -230,6 +236,7 @@ taskForm.addEventListener('submit', async (e) => {
     const project = taskProject ? taskProject.value : "";
     const priority = taskPriority ? taskPriority.value : "media";
     const resolution = taskResolution ? taskResolution.value.trim() : "";
+    const deadline = taskDeadline ? taskDeadline.value : ""; // Acquisite le informazioni di scadenza
     
     if (!text) return;
 
@@ -245,18 +252,21 @@ taskForm.addEventListener('submit', async (e) => {
             project: project,
             priority: priority,
             resolution: resolution,
+            deadline: deadline, // Salvataggio su Firestore
             date: selectedDateStr,
             order: nextOrder,
             completed: false,
             createdAt: new Date()
         });
          
+        // Reset completo dei campi del form
         taskInput.value = '';
         if (taskTime) taskTime.value = '';
         if (taskCategory) taskCategory.value = 'lavoro';
         if (taskProject) taskProject.value = '';
         if (taskPriority) taskPriority.value = 'media';
         if (taskResolution) taskResolution.value = '';
+        if (taskDeadline) taskDeadline.value = '';
     } catch (error) {
         console.error("Errore aggiunta task:", error);
     }
@@ -332,7 +342,6 @@ window.moveTask = async function(id, direction, slot) {
         await updateDoc(doc(db, "tasks", tasks[currentIndex].id), { order: tasks[currentIndex].order });
         await updateDoc(doc(db, "tasks", tasks[targetIndex].id), { order: tasks[targetIndex].order });
 
-        // Forza un refresh immediato del rendering locale per reattività visiva
         renderSchedule();
     } catch (error) {
         console.error("Errore nello spostamento task:", error);
