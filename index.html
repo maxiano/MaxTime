@@ -199,8 +199,14 @@
         /* Form di Pianificazione Professionale */
         form { display: flex; flex-direction: column; gap: 14px; }
         .form-row { display: grid; grid-template-columns: 130px 150px 1fr; gap: 12px; }
-        .form-row-secondary { display: grid; grid-template-columns: 1fr 150px 1fr auto; gap: 12px; }
         
+        /* Adattato per contenere i nuovi campi della seconda riga */
+        .form-row-secondary { display: grid; grid-template-columns: 1fr 130px 1fr 140px auto; gap: 12px; }
+        
+        @media(max-width: 900px) { 
+            .form-row-secondary { grid-template-columns: 1fr 1fr; }
+        }
+
         @media(max-width: 768px) { 
             .form-row { grid-template-columns: 1fr; } 
             .form-row-secondary { grid-template-columns: 1fr; }
@@ -263,33 +269,6 @@
         .badge-urgente { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         
         .badge-project { background: #f1f5f9; color: #334155; font-size: 0.7rem; border: 1px solid var(--border-light); margin-right: 8px; font-weight: 600; }
-
-        /* Etichetta di Esito / Risoluzione Pratica */
-        .resolution-tag {
-            font-size: 0.75rem;
-            background: #f0fdf4;
-            color: #166534;
-            border: 1px solid #bbf7d0;
-            padding: 2px 8px;
-            border-radius: 4px;
-            margin-left: 8px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* Indicatori Visivi Avanzati di Attenzione / Urgenza */
-        li.urgent-attention {
-            animation: pulse-border 2s infinite;
-            background: #fff5f5;
-        }
-
-        @keyframes pulse-border {
-            0% { border-left-color: #dc2626; box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0.4); }
-            50% { border-left-color: #ef4444; box-shadow: inset 0 0 0 3px rgba(239, 68, 68, 0.15); }
-            100% { border-left-color: #dc2626; box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0.4); }
-        }
 
         /* Filtri Rapidi */
         .filter-bar { 
@@ -485,7 +464,7 @@
         </div>
         <div class="admin-status-bar">
             <div>Sessione: <strong>Attiva</strong></div>
-            <div>Tracciamento Esiti: <strong>Abilitato</strong></div>
+            <div>Gestione Progetti: <strong>Abilitata</strong></div>
         </div>
     </header>
 
@@ -500,7 +479,7 @@
             </div>
         </div>
 
-        <!-- Contenitore Risultati della Ricerca Globale (inizialmente nascosto) -->
+        <!-- Contenitore Risultati della Ricerca Globale -->
         <div id="search-results-container" style="display: none; margin-bottom: 20px;">
             <div class="card" style="background: #f8fafc; border-color: var(--primary);">
                 <div style="font-weight: 700; font-size: 0.85rem; margin-bottom: 12px; color: var(--primary); display: flex; justify-content: space-between; align-items: center;">
@@ -577,8 +556,19 @@
                         <option value="alta">Priorità Alta</option>
                     </select>
 
-                    <!-- ID aggiunto per correggere l'errore JavaScript -->
-                    <input type="text" id="task-resolution" placeholder="Esito / Risoluzione pratica (facoltativo)">
+                    <!-- Nuovi campi per Intervallo Temporale e Avanzamento -->
+                    <div style="display: flex; gap: 6px;">
+                        <input type="date" id="task-start-date" title="Data Inizio" style="font-size: 0.8rem; padding: 8px; width: 50%;">
+                        <input type="date" id="task-due-date" title="Data Scadenza" style="font-size: 0.8rem; padding: 8px; width: 50%;">
+                    </div>
+
+                    <select id="task-progress" title="Stato di Avanzamento">
+                        <option value="0">0% - Da iniziare</option>
+                        <option value="25">25% - In corso</option>
+                        <option value="50">50% - A metà</option>
+                        <option value="75">75% - Quasi finito</option>
+                        <option value="100">100% - Completato</option>
+                    </select>
 
                     <button type="submit">Inserisci</button>
                 </div>
