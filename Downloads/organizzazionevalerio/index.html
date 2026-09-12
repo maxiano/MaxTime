@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendario Turni Valerio</title>
+  <meta name="description" content="Applicazione per la gestione e tracciabilità dei turni genitori, vacanze, spese, salute e documenti di Valerio">
+  <meta property="og:title" content="Calendario Turni Valerio">
+  <meta property="og:description" content="Applicazione per la gestione e tracciabilità dei turni genitori, vacanze, spese, salute e documenti di Valerio">
+  
+  <!-- Configurazione PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  
+  <!-- Supporto iOS/Safari -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Turni Valerio">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <!-- Font Google: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Foglio di Stile Esterno -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Configurazione runtime server -->
+  <script src="/api/env.js"></script>
+
+  <!-- SheetJS CDN per esportazione Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <div class="top-bar">
+    <h1>Turni Valerio</h1>
+    <button id="themeToggleBtn" class="btn-theme" onclick="toggleDarkMode()">🌙 Scuro</button>
+  </div>
+
+  <div class="subhead">Tocca un giorno per il turno, o usa 📝 per note ed eventi</div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot papa"></span> Con Te</div>
+    <div class="legend-item"><span class="dot mamma"></span> Con Mamma</div>
+  </div>
+
+  <div class="action-buttons">
+    <!-- PULSANTE INSTALLAZIONE PWA (visibile solo se supportato dal browser) -->
+    <button id="btnInstall" onclick="window.installPWA()" style="display: none;">
+      📲 Installa App
+    </button>
+
+    <label for="csvInput" class="btn btn-import">
+      <span class="btn-icon">📄</span>
+      <span>Carica File CSV</span>
+      <input type="file" id="csvInput" accept=".csv" onchange="importFromCSV(event)">
+    </label>
+
+    <button type="button" class="btn btn-print" onclick="window.print()">
+      <span class="btn-icon">🖨️</span>
+      <span>Stampa / PDF</span>
+    </button>
+
+    <button type="button" class="btn btn-export" onclick="exportToExcel()">
+      <span class="btn-icon">📊</span>
+      <span>Esporta Excel</span>
+    </button>
+
+    <!-- ESPORTAZIONE ICAL / GOOGLE CALENDAR -->
+    <button type="button" class="btn btn-export" onclick="exportToICal()">
+      <span class="btn-icon">📅</span>
+      <span>Esporta iCal</span>
+    </button>
+
+    <button type="button" class="btn btn-reset" onclick="resetOverrides()">
+      <span class="btn-icon">🔄</span>
+      <span>Ripristina Standard</span>
+    </button>
+  </div>
+
+  <!-- SELETTORE VISTA (GRIGLIA / LISTA) -->
+  <div class="view-toggle">
+    <button id="btnViewGrid" class="btn-toggle active" onclick="switchView('grid')">📅 Griglia</button>
+    <button id="btnViewList" class="btn-toggle" onclick="switchView('list')">📋 Lista Agenda</button>
+  </div>
+
+  <!-- FILTRO INTERVALLO DATE E CONTEGGIO TOTALI -->
+  <div class="stats-card">
+    <h3>📊 Calcolo Giorni per Intervallo</h3>
+    <div class="filter-group">
+      <label>Da: <input type="date" id="filterStartDate" onchange="calculateStats()"></label>
+      <label>A: <input type="date" id="filterEndDate" onchange="calculateStats()"></label>
+    </div>
+    <div class="stats-results">
+      <div class="stat-box papa-box">
+        <span>👨 Papà</span>
+        <strong id="countPapa">0 giorni</strong>
+      </div>
+      <div class="stat-box mamma-box">
+        <span>👩 Mamma</span>
+        <strong id="countMamma">0 giorni</strong>
+      </div>
+      <div class="stat-box undefined-box">
+        <span>❓ Non Assegnati</span>
+        <strong id="countUndefined">0 giorni</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROLLI MESE / ANNO RAPIDI -->
+  <div class="controls">
+    <button onclick="changeMonth(-1)">&lt; Prec</button>
+    <div class="month-selectors">
+      <select id="monthSelect" onchange="onDateSelectChange()"></select>
+      <select id="yearSelect" onchange="onDateSelectChange()"></select>
+    </div>
+    <button onclick="changeMonth(1)">Succ &gt;</button>
+  </div>
+
+  <!-- CONTENITORI PER LE DUE VISTE -->
+  <div class="grid" id="calendarGrid"></div>
+  <div class="list-view" id="calendarList" style="display: none;"></div>
+
+  <!-- SEZIONE MODULO SPESE EXTRA -->
+  <section class="module-section">
+    <h3>💰 Gestione Spese Extra & Contabilità</h3>
+    
+    <div class="spese-summary-card">
+      <div>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Saldo Attuale (Divisione 50/50)</p>
+        <div id="speseSaldoInfo" style="font-size: 1.05rem; margin-top: 4px;">Caricamento saldo...</div>
+      </div>
+      <button class="btn btn-primary" onclick="openSpesaModal()">➕ Aggiungi Spesa</button>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table class="spese-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px;">
+        <thead>
+          <tr style="border-bottom: 2px solid var(--surface-border); text-align: left;">
+            <th style="padding: 8px;">Data</th>
+            <th style="padding: 8px;">Descrizione</th>
+            <th style="padding: 8px;">Categoria</th>
+            <th style="padding: 8px;">Pagato Da</th>
+            <th style="padding: 8px;">Modalità</th>
+            <th style="padding: 8px;">Importo</th>
+            <th style="padding: 8px;">Ricevuta</th>
+            <th style="padding: 8px; text-align: center;">Azioni</th>
+          </tr>
+        </thead>
+        <tbody id="speseTableBody">
+          <!-- Generato dinamicamente via JS -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SEZIONE VACANZE E FESTIVITÀ -->
+  <section class="module-section" style="margin-top: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3>🏖️ Pianificatore Vacanze Estive & Festività</h3>
+      <button class="btn btn-primary" onclick="openVacanzeModal()">➕ Aggiungi Blocco Vacanza</button>
+    </div>
+    <div id="vacanzeListContainer" style="display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+      <!-- Inserito dinamicamente da JS -->
+    </div>
+  </section>
+
+  <!-- MODULO ARCHIVIO DOCUMENTI DIGITALI (VAULT SAFE) -->
+  <div class="card" style="margin-bottom: 20px; background: var(--surface-bg, #f8fafc); padding: 15px; border-radius: 8px; border: 1px solid var(--surface-border);">
+    <h3>🗂️ Archivio Documenti Digitali Valerio</h3>
+
+    <!-- Form Caricamento Nuovo Documento -->
+    <div style="background: var(--surface-bg); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); margin-bottom: 15px;">
+      <h4 style="margin-top:0; margin-bottom: 10px; font-size: 0.95rem;">➕ Carica Nuovo Documento</h4>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 10px;">
+        <div>
+          <label style="font-size:0.75rem;">Titolo Documento *:</label>
+          <input type="text" id="docTitolo" class="form-control" style="width:100%;" placeholder="es. Tessera Sanitaria">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;">Categoria:</label>
+          <select id="docCategoria" class="form-control" style="width:100%;">
+            <option value="Identità / Fiscale">Identità / Fiscale</option>
+            <option value="Sanità / Vaccini">Sanità / Vaccini</option>
+            <option value="Scuola / Sport">Scuola / Sport</option>
+            <option value="Altro">Altro</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.75rem;">Data Scadenza (Opzionale):</label>
+          <input type="date" id="docScadenza" class="form-control" style="width:100%;">
+        </div>
+      </div>
+
+      <div style="margin-bottom: 10px;">
+        <label style="font-size:0.75rem;">Seleziona File (Foto o PDF) *:</label>
+        <input type="file" id="docFile" class="form-control" accept="image/*,application/pdf" capture="environment" style="width:100%;">
+      </div>
+
+      <button class="btn btn-primary" style="width:100%; font-size: 0.85rem;" onclick="uploadDocumentoValerio()">📤 Salva Documento</button>
+    </div>
+
+    <!-- Lista Documenti Archiviati -->
+    <div style="background: var(--surface-bg); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--surface-border);">
+      <h4 style="margin-top:0; margin-bottom: 10px; font-size: 0.95rem;">📁 Documenti Archiviati</h4>
+      <div id="listaDocumentiContainer">
+        <p style="color: var(--text-muted); font-size: 0.8rem;">Nessun documento in archivio.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULO GESTIONE FESTIVITÀ ALTERNATE -->
+  <div class="module-section festivita-module" id="festivitaSection">
+    <h3>🎄 Pianificazione Festività Alternate (Pluriannuale)</h3>
+    <p class="subhead" style="margin-bottom: 12px;">
+      Regola automatica: Anni Pari vs Anni Dispari.
+    </p>
+    <div class="form-grid" id="festivitaRulesContainer">
+      <!-- Le regole verranno renderizzate dinamicamente da app.js -->
+    </div>
+    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+      <button type="button" class="btn-submit" id="btnSaveFestivita">💾 Salva Regole Festività</button>
+    </div>
+  </div>
+
+  <!-- SEZIONE SALUTE E TERAPIE (AGGIORNATA) -->
+  <section class="module-section" style="margin-top: 20px;">
+    <h2>🏥 Modulo Salute & Terapie</h2>
+
+    <!-- 1. Farmaci Giornalieri -->
+    <div class="card" style="margin-bottom: 15px; background: var(--surface-bg, #f8fafc); padding: 15px; border-radius: 8px; border: 1px solid var(--surface-border);">
+      <h3>💊 Somministrazione Farmaci (Oggi)</h3>
+      <div style="display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap;">
+        <input type="text" id="farmacoNome" placeholder="Nome farmaco" style="flex:2; min-width: 120px;">
+        <input type="time" id="farmacoOrario" style="flex:1; min-width: 80px;">
+        <input type="text" id="farmacoNote" placeholder="Note (es. a stomaco pieno)" style="flex:2; min-width: 120px;">
+        <button class="btn btn-primary" onclick="addFarmaco()">Aggiungi</button>
+      </div>
+      <div id="saluteFarmaciList"></div>
+    </div>
+
+    <!-- 2. Rubrica Contatti Rapidi -->
+    <div class="card" style="margin-bottom: 15px; background: var(--surface-bg, #f8fafc); padding: 15px; border-radius: 8px; border: 1px solid var(--surface-border);">
+      <h3>📞 Rubrica Contatti Utili</h3>
+      <div style="display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap;">
+        <input type="text" id="contattoNome" placeholder="Nome (es. Scuolabus, Baby Sitter)" style="flex:2; min-width: 130px;">
+        <input type="text" id="contattoRuolo" placeholder="Ruolo/Note" style="flex:1; min-width: 100px;">
+        <input type="tel" id="contattoTel" placeholder="Telefono" style="flex:1; min-width: 100px;">
+        <button class="btn btn-primary" onclick="addContattoUtile()">+ Aggiungi</button>
+      </div>
+      <div id="saluteContattiList"></div>
+    </div>
+
+    <!-- 3. Pediatra e Info Generali -->
+    <div class="card" style="margin-bottom: 15px; background: var(--surface-bg, #f8fafc); padding: 15px; border-radius: 8px; border: 1px solid var(--surface-border);">
+      <h3>🩺 Pediatra & Informazioni Mediche</h3>
+      
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        <div>
+          <label style="font-size:0.8rem;">Nome Pediatra:</label>
+          <input type="text" id="salutePediatraNome" class="form-control" style="width: 100%;">
+        </div>
+        <div>
+          <label style="font-size:0.8rem;">Telefono Pediatra:</label>
+          <input type="tel" id="salutePediatraTel" class="form-control" style="width: 100%;">
+        </div>
+        <div>
+          <label style="font-size:0.8rem;">Indirizzo / Via Studio:</label>
+          <input type="text" id="salutePediatraVia" class="form-control" style="width: 100%;" placeholder="Via Roma 15">
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label style="font-size:0.8rem;">Orari Studio (7 giorni):</label>
+        <textarea id="salutePediatraOrari" rows="7" class="form-control" style="width: 100%; box-sizing: border-box; resize: vertical;" placeholder="Lun: 09:00 - 12:00&#10;Mar: 15:00 - 18:00&#10;Mer: 09:00 - 12:00&#10;Gio: 15:00 - 18:00&#10;Ven: 09:00 - 12:00&#10;Sab: Chiuso&#10;Dom: Chiuso"></textarea>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label style="font-size:0.8rem;">Allergie / Intolleranze / Note Mediche:</label>
+        <textarea id="saluteAllergie" rows="2" class="form-control" style="width: 100%; box-sizing: border-box;"></textarea>
+      </div>
+      
+      <button class="btn btn-primary" style="margin-top: 10px;" onclick="saveSaluteInfo()">💾 Salva Info Mediche</button>
+    </div>
+
+    <!-- 4. Visite Mediche -->
+    <div class="card" style="background: var(--surface-bg, #f8fafc); padding: 15px; border-radius: 8px; border: 1px solid var(--surface-border);">
+      <h3>📅 Prossime Visite & Controlli</h3>
+      <div style="display:flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap;">
+        <input type="date" id="visitaData">
+        <input type="text" id="visitaDesc" placeholder="Descrizione visita (es. Dentista ore 16:00)" style="flex:1; min-width: 150px;">
+        <button class="btn btn-primary" onclick="addVisitaMedica()">Aggiungi</button>
+      </div>
+      <ul id="saluteVisiteList" style="list-style:none; padding:0; margin:0; max-height:200px; overflow-y:auto;"></ul>
+    </div>
+  </section>
+
+  <!-- MODULO LISTA SPESA & TAGLIE VALERIO -->
+  <div class="card" style="margin-bottom: 20px; background: var(--surface-bg, #f8fafc); padding: 15px; border-radius: 8px; border: 1px solid var(--surface-border);">
+    <h3>🛍️ Taglie & Lista Spesa Valerio</h3>
+
+    <!-- Sezione 1: Taglie Attuali -->
+    <div style="margin-bottom: 20px; background: var(--surface-bg); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--surface-border);">
+      <h4 style="margin-top:0; margin-bottom: 10px; font-size: 0.95rem;">👟 Taglie Attuali</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+        <div>
+          <label style="font-size:0.75rem;">Scarpe:</label>
+          <input type="text" id="tagliaScarpe" class="form-control" style="width:100%;" placeholder="es. 28">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;">Magliette / Felpe:</label>
+          <input type="text" id="tagliaMagliette" class="form-control" style="width:100%;" placeholder="es. 4-5 anni / 110cm">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;">Pantaloni:</label>
+          <input type="text" id="tagliaPantaloni" class="form-control" style="width:100%;" placeholder="es. 110cm">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;">Intimo / Altro:</label>
+          <input type="text" id="tagliaIntimo" class="form-control" style="width:100%;" placeholder="es. 4-5 anni">
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top: 10px; width: 100%; font-size: 0.85rem;" onclick="saveTaglieValerio()">💾 Salva Taglie</button>
+    </div>
+
+    <!-- Sezione 2: Lista Spesa Condivisa -->
+    <div style="background: var(--surface-bg); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--surface-border);">
+      <h4 style="margin-top:0; margin-bottom: 10px; font-size: 0.95rem;">🛒 Lista Cose da Comprare</h4>
+      
+      <!-- Form inserimento articolo -->
+      <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+        <input type="text" id="nuovoArticoloSpesa" class="form-control" style="flex: 2; min-width: 150px;" placeholder="Cosa serve? (es. Pannolini, Scarpe ginnastica)">
+        <input type="text" id="noteArticoloSpesa" class="form-control" style="flex: 1; min-width: 100px;" placeholder="Note (es. marca, misura)">
+        <button class="btn btn-primary" onclick="addArticoloSpesa()">➕ Aggiungi</button>
+      </div>
+
+      <!-- Elenco Prodotti -->
+      <div id="listaSpesaContainer">
+        <p style="color: var(--text-muted); font-size: 0.8rem;">Nessun articolo in lista.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE PER GESTIONE NOTE ED EVENTI -->
+  <div id="noteModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 id="modalDateTitle">Aggiungi Evento / Nota</h3>
+
+      <label for="noteCategory">Tipo di Evento:</label>
+      <select id="noteCategory">
+        <option value="allenamento">⚽ Allenamento / Partita</option>
+        <option value="medica">🏥 Visita Medica</option>
+        <option value="festa">🎉 Festa / Compleanno</option>
+        <option value="scuola">📚 Scuola / Gita</option>
+        <option value="generico">📌 Nota Generica</option>
+      </select>
+
+      <label for="noteTextInput">Descrizione / Nota:</label>
+      <input type="text" id="noteTextInput" placeholder="Es. Partita ore 15:00..." maxlength="40">
+
+      <!-- SPUNTA CAMBIO TURNO UFFICIALE -->
+      <label class="modal-checkbox-label">
+        <input type="checkbox" id="checkIsCambio">
+        <span>Segna ufficialmente come "Cambio Turno"</span>
+      </label>
+
+      <div class="modal-actions">
+        <button class="btn-delete" id="btnDeleteNote" onclick="deleteCurrentNote()">Elimina Nota</button>
+        <button onclick="closeNoteModal()">Annulla</button>
+        <button class="btn-primary" onclick="saveCurrentNote()">Salva</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE AGGIUNTA SPESA -->
+  <div class="modal-overlay" id="spesaModal">
+    <div class="modal-content">
+      <h3>Registra Spesa Straordinaria</h3>
+      
+      <label>Descrizione Spesa
+        <input type="text" id="spesaDesc" placeholder="Es. Gita scolastica, Visita dentistica...">
+      </label>
+
+      <div style="display: flex; gap: 10px;">
+        <label style="flex: 1;">Importo (€)
+          <input type="number" step="0.01" id="spesaImporto" placeholder="0.00">
+        </label>
+
+        <label style="flex: 1;">Pagato Da
+          <select id="spesaPagatoDa">
+            <option value="papa">Papà</option>
+            <option value="mamma">Mamma</option>
+          </select>
+        </label>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <label style="flex: 1;">Data
+          <input type="date" id="spesaData">
+        </label>
+
+        <label style="flex: 1;">Categoria
+          <select id="spesaCategoria">
+            <option value="scuola">📚 Scuola</option>
+            <option value="salute">🏥 Salute / Visite</option>
+            <option value="sport">⚽ Sport / Attività</option>
+            <option value="altro">📦 Altro</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- NUOVO CAMPO: Modalità di Pagamento -->
+      <label>Modalità di Pagamento
+        <select id="spesaModalita">
+          <option value="intero">Intero (Anticipato 100% - Genera Conguaglio 50%)</option>
+          <option value="quota_propria">Solo Quota Propria (Pagata la propria metà 50%)</option>
+        </select>
+      </label>
+
+      <label>Allegato Ricevuta / Scontrino (Opzionale)
+        <input type="file" id="spesaRicevutaInput" accept="image/*">
+      </label>
+
+      <div class="modal-actions">
+        <button onclick="closeSpesaModal()">Annulla</button>
+        <button class="btn-primary" onclick="saveSpesa()">Salva Spesa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE LOGISTICA & CHECKLIST PASSAGGI -->
+  <div class="modal-overlay" id="logisticaModal">
+    <div class="modal-content">
+      <h3 id="logisticaModalTitle">🚗 Dettagli Passaggio</h3>
+      <label>Luogo del Cambio: <input type="text" id="logisticaLuogo" placeholder="Es. Scuola, Casa Papà..."></label>
+      <label>Ora del Cambio: <input type="time" id="logisticaOra"></label>
+      <label>Note aggiuntive: <input type="text" id="logisticaNote" placeholder="Es. Portare anche le scarpe da ginnastica"></label>
+      
+      <h4 style="margin-top: 15px; margin-bottom: 5px;">🎒 Checklist Cose da Portare:</h4>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <label class="modal-checkbox-label"><input type="checkbox" id="checkVestiti"> 👕 Cambio Vestiti</label>
+        <label class="modal-checkbox-label"><input type="checkbox" id="checkCartella"> 📚 Cartella / Compiti</label>
+        <label class="modal-checkbox-label"><input type="checkbox" id="checkLibretto"> 🏥 Libretto Sanitario</label>
+        <label class="modal-checkbox-label"><input type="checkbox" id="checkGiochi"> 🧸 Giochi / Oggetti Personali</label>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button onclick="closeLogisticaModal()">Annulla</button>
+        <button class="btn-primary" onclick="saveLogistica()">Salva Passaggio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE VACANZE -->
+  <div class="modal-overlay" id="vacanzeModal">
+    <div class="modal-content">
+      <h3>🏖️ Aggiungi Blocco Vacanza</h3>
+      <label>Titolo: <input type="text" id="vacanzaTitolo" placeholder="Es. Settimana Mare, Vacanze Pasqua"></label>
+      <label>Da: <input type="date" id="vacanzaInizio"></label>
+      <label>A: <input type="date" id="vacanzaFine"></label>
+      <label>Assegnato a:
+        <select id="vacanzaAssegnato">
+          <option value="papa">Papà</option>
+          <option value="mamma">Mamma</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button onclick="closeVacanzeModal()">Annulla</button>
+        <button class="btn-primary" onclick="saveVacanzaBlock()">Salva Blocco</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE VISUALIZZAZIONE RICEVUTA (IN-APP LIGHTBOX) -->
+  <div class="modal-overlay" id="ricevutaModal">
+    <div class="modal-content" style="text-align: center; max-width: 520px;">
+      <h3 id="ricevutaModalTitle">🧾 Ricevuta / Scontrino</h3>
+      <div style="margin: 15px 0; max-height: 60vh; overflow-y: auto; display: flex; justify-content: center; align-items: center; background: #0f172a; border-radius: 8px; padding: 10px;">
+        <img id="ricevutaModalImg" src="" alt="Ricevuta" style="max-width: 100%; max-height: 55vh; object-fit: contain; border-radius: 4px;">
+      </div>
+      <div class="modal-actions" style="justify-content: center;">
+        <button type="button" class="btn-primary" onclick="closeRicevutaModal()">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Registrazione Service Worker per PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('Service Worker registrato:', reg.scope))
+          .catch((err) => console.error('Errore Service Worker:', err));
+      });
+    }
+  </script>
+
+  <!-- Logica JavaScript Esterna (Modulo ES6) -->
+  <script type="module" src="js/app.js"></script> 
+</body>
+</html>
