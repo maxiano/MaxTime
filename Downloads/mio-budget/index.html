@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestore Budget & Spese</title>
+    <meta name="description" content="Applicazione per la gestione del budget personale e delle spese">
+    <meta property="og:title" content="Gestore Budget & Spese">
+    <meta property="og:description" content="Applicazione per la gestione del budget personale e delle spese">
+    
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Budget App">
+
+  <link rel="manifest" href="manifest.json">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
+
+    <!-- Firebase SDK v8 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; user-select: none; }
+    </style>
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registrato con successo!', reg))
+        .catch(err => console.error('Errore nella registrazione del Service Worker:', err));
+    });
+  }
+</script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
+
+    <!-- Schermata Login -->
+    <div id="authScreen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-slate-700 text-center">
+            <div class="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md">
+                <i data-lucide="lock" class="w-6 h-6 text-white"></i>
+            </div>
+            <h2 class="text-lg font-bold text-slate-900 mb-1">Accedi al tuo Budget</h2>
+            <p class="text-xs text-slate-500 mb-4">I tuoi dati sono protetti e sincronizzati in cloud.</p>
+            
+            <form onsubmit="handleAuth(event)" class="space-y-3">
+                <input type="email" id="authEmail" placeholder="La tua Email" required
+                    class="w-full border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="password" id="authPassword" placeholder="Password" required
+                    class="w-full border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+                
+                <div id="authError" class="text-xs text-rose-600 hidden font-semibold"></div>
+
+                <button type="submit" id="authSubmitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition">
+                    Accedi / Registrati
+                </button>
+                <button type="button" onclick="continueAsGuest()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg text-xs transition border border-slate-300">
+                    Continua come Ospite (Offline / Demo)
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Header -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center flex-wrap gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded-xl shadow-md">
+                    <i data-lucide="wallet" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">Gestore Budget</h1>
+                    <p class="text-[11px] text-emerald-400 flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Sincronizzato
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Selezione Anno e Mese -->
+            <div class="flex items-center space-x-2">
+                <div class="bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700">
+                    <select id="yearSelect" onchange="changeYear()" class="bg-transparent text-white font-semibold text-xs focus:outline-none cursor-pointer">
+                        <option value="2026" class="bg-slate-800">2026</option>
+                        <option value="2027" class="bg-slate-800">2027</option>
+                    </select>
+                </div>
+                <div class="bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700">
+                    <select id="monthSelect" onchange="changeMonth()" class="bg-transparent text-white font-semibold text-xs focus:outline-none cursor-pointer">
+                        <!-- Popolato dinamicamente da JS -->
+                    </select>
+                </div>
+                <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-lg border border-slate-700" title="Esci">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        
+       <!-- Banner Conto Generale -->
+        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-2xl shadow-lg border border-indigo-900/50 mb-6 flex justify-between items-center flex-wrap gap-4">
+            <div>
+                <span class="text-[11px] uppercase tracking-wider font-semibold text-indigo-300 block mb-0.5">Conto Generale / Patrimoniale</span>
+                <div id="displayTotalAccount" class="text-2xl md:text-3xl font-extrabold text-white">0,00 €</div>
+                <p class="text-[11px] text-slate-400 mt-1">
+                    Base iniziale: <span id="displayInitialBase" class="text-indigo-200 font-semibold">0,00 €</span> • Saldo cumulato netto a <span id="accountCurrentMonthLabel" class="text-indigo-200 font-semibold">---</span>
+                </p>
+            </div>
+            <div class="bg-indigo-600/20 p-3 rounded-xl border border-indigo-500/30 flex items-center gap-3">
+                <i data-lucide="landmark" class="w-8 h-8 text-indigo-400"></i>
+            </div>
+        </div>
+
+        <!-- Dashboard Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-emerald-300" onclick="openIncomeModal()">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[10px] font-bold uppercase text-slate-400">Entrate</span>
+                    <i data-lucide="arrow-down-left" class="w-4 h-4 text-emerald-500"></i>
+                </div>
+                <div id="displayIncome" class="text-lg md:text-xl font-bold text-emerald-600">0,00 €</div>
+                <span class="text-[10px] text-emerald-600 font-medium underline flex items-center gap-0.5 mt-1">Dettaglio <i data-lucide="chevron-right" class="w-3 h-3"></i></span>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-blue-300" onclick="openFixedModal()">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[10px] font-bold uppercase text-slate-400">Uscite Fisse</span>
+                    <i data-lucide="external-link" class="w-4 h-4 text-blue-500"></i>
+                </div>
+                <div id="displayFixed" class="text-lg md:text-xl font-bold text-slate-900">0,00 €</div>
+                <span class="text-[10px] text-blue-600 font-medium underline flex items-center gap-0.5 mt-1">Dettaglio <i data-lucide="chevron-right" class="w-3 h-3"></i></span>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[10px] font-bold uppercase text-slate-400">Variabili</span>
+                    <i data-lucide="shopping-bag" class="w-4 h-4 text-rose-500"></i>
+                </div>
+                <div id="displayVariable" class="text-lg md:text-xl font-bold text-rose-600">0,00 €</div>
+                <div class="mt-1 text-[10px] space-y-0.5 text-slate-500 border-t pt-1 border-slate-100">
+                    <div class="flex justify-between"><span>⛽ Fuel:</span> <strong id="fuelBudgetBar">0/200€</strong></div>
+                    <div class="flex justify-between"><span>🛒 Spesa Alimentare:</span> <strong id="foodBudgetBar">0/400€</strong></div>
+                </div>
+            </div>
+
+            <div class="bg-blue-900 text-white p-4 rounded-xl shadow-md border border-blue-800">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[10px] font-bold uppercase text-blue-200">Disponibile</span>
+                    <i data-lucide="piggy-bank" class="w-4 h-4 text-emerald-400"></i>
+                </div>
+                <div id="displayRemaining" class="text-lg md:text-xl font-bold text-emerald-400">+0,00 €</div>
+                <span class="text-[10px] text-blue-200">Margine mese</span>
+            </div>
+        </div>
+
+        <!-- Forms Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Form Entrata Extra -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-emerald-200">
+                <h2 class="text-sm font-bold text-emerald-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-600"></i> Nuova Entrata Extra
+                </h2>
+                <form id="incomeForm" onsubmit="addIncome(event)" class="grid grid-cols-2 gap-2.5">
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Categoria</label>
+                        <select id="incomeCategory" class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-emerald-500">
+                            <option value="Rimborso / Bonus">💰 Rimborso / Bonus</option>
+                            <option value="Vendita Usato">🏷️ Vendita Usato</option>
+                            <option value="Prestazione Occasionale">🛠️ Prestazione / Consulenza</option>
+                            <option value="Altre Entrate">📥 Altra Entrata</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Importo (€)</label>
+                        <input type="number" id="incomeAmount" step="0.01" min="0.1" placeholder="150.00" required
+                            class="w-full border border-slate-300 rounded-lg p-2 text-xs font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Note</label>
+                        <input type="text" id="incomeNote" placeholder="Es. Rimborso" class="w-full border border-slate-300 rounded-lg p-2 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data</label>
+                        <input type="date" id="incomeDate" required class="w-full border border-slate-300 rounded-lg p-2 text-xs">
+                    </div>
+                    <div class="col-span-2 mt-1">
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs shadow-sm flex justify-center items-center gap-1">
+                            <i data-lucide="arrow-up-right" class="w-4 h-4"></i> Registra Entrata
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Form Spesa Variabile -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-rose-200">
+                <h2 class="text-sm font-bold text-rose-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="minus-circle" class="w-4 h-4 text-rose-600"></i> Nuova Spesa Variabile
+                </h2>
+                <form id="expenseForm" onsubmit="addExpense(event)" class="grid grid-cols-2 gap-2.5">
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Categoria</label>
+                        <select id="expenseCategory" class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500">
+                            <option value="Carburante">⛽ Carburante (Max 200€)</option>
+                            <option value="Casa & Manutenzione">🏠 Casa & Manutenzione (Max 400€)</option>
+                            <option value="Spesa Alimentare">🛒 Spesa Alimentare (Max 400€)</option>
+                            <option value="Tempo Libero & Svago">🏔️ Tempo Libero / Trekking</option>
+                            <option value="Varie">📦 Altre Uscite</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Importo (€)</label>
+                        <input type="number" id="expenseAmount" step="0.01" min="0.1" placeholder="50.00" required
+                            class="w-full border border-slate-300 rounded-lg p-2 text-xs font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Note</label>
+                        <input type="text" id="expenseNote" placeholder="Es. Benzina" class="w-full border border-slate-300 rounded-lg p-2 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data</label>
+                        <input type="date" id="expenseDate" required class="w-full border border-slate-300 rounded-lg p-2 text-xs">
+                    </div>
+                    <div class="col-span-2 mt-1">
+                        <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-lg text-xs shadow-sm flex justify-center items-center gap-1">
+                            <i data-lucide="arrow-down-left" class="w-4 h-4"></i> Registra Uscita
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sezione Registri -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                        <i data-lucide="trending-up" class="w-4 h-4 text-emerald-600"></i> Entrate Registrate
+                    </h2>
+                    <button onclick="clearIncomesData()" class="text-[11px] text-rose-600 hover:underline">Svuota</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-400 uppercase text-[10px]">
+                                <th class="p-2">Data</th>
+                                <th class="p-2">Categoria</th>
+                                <th class="p-2">Note</th>
+                                <th class="p-2 text-right">Importo</th>
+                                <th class="p-2 text-center"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="incomeTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <div id="emptyIncomeMessage" class="py-6 text-center text-slate-400 text-xs">Nessun dato registrato.</div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                        <i data-lucide="trending-down" class="w-4 h-4 text-rose-600"></i> Uscite Variabili Registrate
+                    </h2>
+                    <button onclick="clearExpensesData()" class="text-[11px] text-rose-600 hover:underline">Svuota</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-400 uppercase text-[10px]">
+                                <th class="p-2">Data</th>
+                                <th class="p-2">Categoria</th>
+                                <th class="p-2">Note</th>
+                                <th class="p-2 text-right">Importo</th>
+                                <th class="p-2 text-center"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <div id="emptyExpenseMessage" class="py-6 text-center text-slate-400 text-xs">Nessun dato registrato.</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Entrate -->
+    <div id="incomeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            <div class="bg-emerald-900 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-sm">Dettaglio Entrate Mese di <span id="modalIncomeMonthName" class="text-emerald-300">---</span></h3>
+                <button onclick="closeIncomeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-4 overflow-y-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 uppercase text-[10px]">
+                            <th class="p-2">Tipo</th>
+                            <th class="p-2">Origine / Categoria</th>
+                            <th class="p-2">Note</th>
+                            <th class="p-2 text-right">Importo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalIncomeTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+            <div class="bg-slate-50 p-3 border-t border-slate-200 flex justify-between items-center text-xs">
+                <span>Totale Entrate: <strong id="modalIncomeTotal" class="text-emerald-700 font-bold">0,00 €</strong></span>
+                <button onclick="closeIncomeModal()" class="bg-emerald-800 hover:bg-emerald-900 text-white font-semibold px-3 py-1.5 rounded-lg">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Uscite Fisse -->
+    <div id="fixedModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-sm">Uscite Fisse Mese di <span id="modalMonthName" class="text-blue-400">---</span></h3>
+                <button onclick="closeFixedModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-4 overflow-y-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 uppercase text-[10px]">
+                            <th class="p-2">Cat.</th>
+                            <th class="p-2">Voce</th>
+                            <th class="p-2">Note</th>
+                            <th class="p-2 text-right">Importo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalFixedTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+            <div class="bg-slate-50 p-3 border-t border-slate-200 flex justify-between items-center text-xs">
+                <span>Totale: <strong id="modalFixedTotal" class="text-slate-900">0,00 €</strong></span>
+                <button onclick="closeFixedModal()" class="bg-slate-900 text-white font-semibold px-3 py-1.5 rounded-lg">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // 1. Configurazione Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyDFQbKY8HA83xRlFk_OMNIFF_BAQMuP8HI",
+      authDomain: "gestione-spese-d905a.firebaseapp.com",
+      databaseURL: "https://gestione-spese-d905a-default-rtdb.firebaseio.com",
+      projectId: "gestione-spese-d905a",
+      storageBucket: "gestione-spese-d905a.firebasestorage.app",
+      messagingSenderId: "518124443080",
+      appId: "1:518124443080:web:676fce0a4e6ad6168d9cfd",
+      measurementId: "G-T6B3VVSZNQ"
+    };
+
+    // 2. Inizializzazione sicura
+    let auth = null, db = null;
+    try {
+        if (typeof firebase !== "undefined") {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.database();
+        }
+    } catch (err) {
+        console.warn("Inizializzazione Firebase:", err);
+    }
+
+    function safeAlert(msg) {
+        try { alert(msg); } catch (e) { console.warn("Alert:", msg); }
+    }
+    function safeConfirm(msg) {
+        try { return confirm(msg); } catch (e) { return true; }
+    }
+
+    function loadLocalData() {
+        try {
+            const saved = localStorage.getItem("user_budget");
+            if (saved) {
+                const data = JSON.parse(saved);
+                expensesData = data.expenses || {};
+                incomesData = data.incomes || {};
+            }
+        } catch (e) {
+            console.warn("Lettura localStorage:", e);
+        }
+    }
+
+    function saveLocalData() {
+        try {
+            localStorage.setItem("user_budget", JSON.stringify({ expenses: expensesData, incomes: incomesData }));
+        } catch (e) {
+            console.warn("Salvataggio localStorage:", e);
+        }
+    }
+
+    function continueAsGuest() {
+        currentUser = { email: "ospite@budget.app", isGuest: true };
+        document.getElementById("authScreen").classList.add("hidden");
+        loadLocalData();
+        updateView();
+    }
+
+    // Costanti
+    const INITIAL_ACCOUNT_BALANCE = 5348.43; // Base iniziale di partenza al 1° Agosto 2026
+    const FIXED_INPS_INCOME = 101.90;
+
+    // Ordine cronologico globale dei mesi per il calcolo del conto accumulato
+    const CHRONOLOGICAL_MONTHS = [
+        { key: "Agosto_Prev", year: "2026", label: "Agosto 2026" },
+        { key: "Settembre", year: "2026", label: "Settembre 2026" },
+        { key: "Ottobre", year: "2026", label: "Ottobre 2026" },
+        { key: "Novembre", year: "2026", label: "Novembre 2026" },
+        { key: "Dicembre", year: "2026", label: "Dicembre 2026" },
+        { key: "Gennaio", year: "2027", label: "Gennaio 2027" },
+        { key: "Febbraio", year: "2027", label: "Febbraio 2027" },
+        { key: "Marzo", year: "2027", label: "Marzo 2027" },
+        { key: "Aprile", year: "2027", label: "Aprile 2027" },
+        { key: "Maggio", year: "2027", label: "Maggio 2027" },
+        { key: "Giugno", year: "2027", label: "Giugno 2027" },
+        { key: "Luglio", year: "2027", label: "Luglio 2027" },
+        { key: "Agosto", year: "2027", label: "Agosto 2027" },
+        { key: "Settembre_27", year: "2027", label: "Settembre 2027" },
+        { key: "Ottobre_27", year: "2027", label: "Ottobre 2027" },
+        { key: "Novembre_27", year: "2027", label: "Novembre 2027" },
+        { key: "Dicembre_27", year: "2027", label: "Dicembre 2027" }
+    ];
+
+    // 3. Mappatura Anni e Mesi con dettagli base per la Modal Entrate
+    const YEAR_MONTHS = {
+        "2026": [
+            { key: "Agosto_Prev", label: "Agosto (Prev)", baseIncome: 1800 + FIXED_INPS_INCOME, tag: "Expleo + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Settembre", label: "Settembre", baseIncome: 1800 + FIXED_INPS_INCOME, tag: "Expleo + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Ottobre", label: "Ottobre", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Novembre", label: "Novembre", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Dicembre", label: "Dicembre", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] }
+        ],
+        "2027": [
+            { key: "Gennaio", label: "Gennaio", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Febbraio", label: "Febbraio", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Marzo", label: "Marzo", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Aprile", label: "Aprile", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Maggio", label: "Maggio", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Giugno", label: "Giugno", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Luglio", label: "Luglio", baseIncome: 1800 + FIXED_INPS_INCOME, tag: "Expleo + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Agosto", label: "Agosto", baseIncome: 1800 + FIXED_INPS_INCOME, tag: "Expleo + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Settembre_27", label: "Settembre", baseIncome: 1800 + FIXED_INPS_INCOME, tag: "Expleo + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Ottobre_27", label: "Ottobre", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Novembre_27", label: "Novembre", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] },
+            { key: "Dicembre_27", label: "Dicembre", baseIncome: 2500 + FIXED_INPS_INCOME, tag: "Expleo + Spes + INPS", breakdown: [{ name: "Stipendio Expleo", amount: 1800.00 }, { name: "Spes Montesacro", amount: 700.00 }, { name: "Pensione INPS", amount: FIXED_INPS_INCOME }] }
+        ]
+    };
+
+  // 4. Stato dell'Applicazione
+    let currentUser = null;
+    let expensesData = {};
+    let incomesData = {};
+    let currentYear = "2026";
+    let currentMonth = "Agosto_Prev";
+
+    const CATEGORY_BUDGETS = { "Carburante": 200.00, "Spesa Alimentare": 400.00 };
+    const baseMonthlyFixed = [
+        { cat: "Casa", name: "Affitto Mensile", amount: 650.00, desc: "Mensile (il 10)" },
+        { cat: "Famiglia", name: "Mantenimento Valerio", amount: 305.00, desc: "Mensile" },
+        { cat: "Abbonamenti", name: "Wi-Fi / Internet Casa", amount: 54.90, desc: "Mensile" },
+        { cat: "Abbonamenti", name: "DAZN", amount: 34.99, desc: "Mensile" },
+        { cat: "Abbonamenti", name: "Prime Video", amount: 8.99, desc: "Mensile" },
+        { cat: "Abbonamenti", name: "Netflix", amount: 6.99, desc: "Mensile" }
+    ];
+
+    const periodicExpenses = {
+        // --- 2026 ---
+        "Agosto_Prev": [
+            // Nessuna luce bimestrale (era ad agosto, ora spostata a settembre/bimestrali corrette)
+        ],
+        "Settembre": [
+            { cat: "Utenze", name: "Luce (Bimestrale)", amount: 130.00, desc: "Scadenza Settembre" },
+            { cat: "Utenze", name: "Acqua (Bimestrale)", amount: 30.00, desc: "Scadenza Settembre" }
+        ],
+        "Ottobre": [
+            // Mese di stacco per la luce bimestrale (partendo da gennaio: gen, mar, mag, lug, set, nov)
+        ],
+        "Novembre": [
+            { cat: "Utenze", name: "Luce (Bimestrale)", amount: 130.00, desc: "Scadenza Novembre" },
+            { cat: "Utenze", name: "Acqua (Bimestrale)", amount: 30.00, desc: "Scadenza Novembre" },
+            { cat: "Utenze", name: "TARI (Tassa Rifiuti)", amount: 40.00, desc: "Quota Trimestrale" }
+        ],
+        "Dicembre": [
+            // Mese di stacco per la luce
+        ],
+        // --- 2027 ---
+        "Gennaio": [
+            { cat: "Utenze", name: "Luce (Bimestrale)", amount: 130.00, desc: "Scadenza Gennaio" },
+            { cat: "Utenze", name: "Acqua (Bimestrale)", amount: 30.00, desc: "Scadenza Gennaio" }
+        ],
+        "Febbraio": [
+            // Mese di stacco per la luce
+        ],
+        "Marzo": [
+            { cat: "Utenze", name: "Luce (Bimestrale)", amount: 130.00, desc: "Scadenza Marzo" },
+            { cat: "Utenze", name: "Acqua (Bimestrale)", amount: 30.00, desc: "Scadenza Marzo" },
+            { cat: "Utenze", name: "TARI (Tassa Rifiuti)", amount: 40.00, desc: "Quota Trimestrale" }
+        ],
+        "Aprile": [
+            // Mese di stacco per la luce
+        ],
+        "Maggio": [
+            { cat: "Utenze", name: "Luce (Bimestrale)", amount: 130.00, desc: "Scadenza Maggio" },
+            { cat: "Utenze", name: "Acqua (Bimestrale)", amount: 30.00, desc: "Scadenza Maggio" },
+            { cat: "Trasporti", name: "Bollo Auto", amount: 170.00, desc: "Scadenza Annuale" }
+        ],
+        "Giugno": [
+            { cat: "Utenze", name: "TARI (Tassa Rifiuti)", amount: 40.00, desc: "Quota Trimestrale" },
+            { cat: "Tempo Libero", name: "Rimessaggio Roulotte", amount: 500.00, desc: "Scadenza Annuale" }
+        ],
+        "Luglio": [
+            { cat: "Utenze", name: "Luce (Bimestrale)", amount: 130.00, desc: "Scadenza Luglio" },
+            { cat: "Utenze", name: "Acqua (Bimestrale)", amount: 30.00, desc: "Scadenza Luglio" },
+            { cat: "Trasporti", name: "Assicurazione Auto", amount: 360.00, desc: "Scadenza Annuale" }
+        ],
+        "Agosto": [
+            { cat: "Extra", name: "Campeggio Estivo", amount: 1800.00, desc: "Quota Straordinaria" }
+        ],
+        "Settembre_27": [
+            { cat: "Utenze", name: "Luce (Bimestrale)", amount: 130.00, desc: "Scadenza Settembre" },
+            { cat: "Utenze", name: "Acqua (Bimestrale)", amount: 30.00, desc: "Scadenza Settembre" }
+        ],
+        "Ottobre_27": [
+            // Mese di stacco per la luce
+        ],
+        "Novembre_27": [
+            { cat: "Utenze", name: "Luce (Bimestrale)", amount: 130.00, desc: "Scadenza Novembre" },
+            { cat: "Utenze", name: "Acqua (Bimestrale)", amount: 30.00, desc: "Scadenza Novembre" },
+            { cat: "Utenze", name: "TARI (Tassa Rifiuti)", amount: 40.00, desc: "Quota Trimestrale" }
+        ],
+        "Dicembre_27": [
+            // Mese di stacco per la luce
+        ]
+    };
+
+    // 5. Listener DOM e Inizializzazione
+    document.addEventListener("DOMContentLoaded", () => {
+        const today = new Date();
+        document.getElementById("expenseDate").valueAsDate = today;
+        document.getElementById("incomeDate").valueAsDate = today;
+        
+        populateMonthDropdown();
+
+        if (typeof lucide !== "undefined") {
+            lucide.createIcons();
+        }
+
+        if (auth) {
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById("authScreen").classList.add("hidden");
+                    listenToDatabase();
+                } else {
+                    currentUser = null;
+                    document.getElementById("authScreen").classList.remove("hidden");
+                }
+            });
+        }
+    });
+
+   function populateMonthDropdown() {
+    const monthSelect = document.getElementById("monthSelect");
+    monthSelect.innerHTML = "";
+    const months = YEAR_MONTHS[currentYear] || [];
+
+    if (months.length === 0) return;
+
+    months.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m.key;
+        opt.className = "bg-slate-800";
+        opt.innerText = `${m.label} (${m.baseIncome.toLocaleString('it-IT')} €)`;
+        monthSelect.appendChild(opt);
+    });
+
+    // 1. Rileva il mese corrente dal sistema (0 = Gennaio, 8 = Settembre, ecc.)
+    const today = new Date();
+    const systemMonthIndex = today.getMonth();
+
+    // Nomi dei mesi corrispondenti agli indici JavaScript (0-11)
+    const monthNamesItalian = [
+        "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+        "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+    ];
+    const currentMonthName = monthNamesItalian[systemMonthIndex];
+
+    // 2. Cerca se il mese reale corrente esiste tra le opzioni dell'anno selezionato
+    const matchedMonth = months.find(m => 
+        m.key === currentMonthName || 
+        m.key.startsWith(currentMonthName) || 
+        m.label.toLowerCase().includes(currentMonthName.toLowerCase())
+    );
+
+    // 3. Imposta il mese trovato o fallback sul primo disponibile dell'anno
+    if (matchedMonth) {
+        currentMonth = matchedMonth.key;
+    } else {
+        currentMonth = months[0].key;
+    }
+
+    monthSelect.value = currentMonth;
+}
+
+    function changeYear() {
+        currentYear = document.getElementById("yearSelect").value;
+        populateMonthDropdown();
+        updateView();
+    }
+
+    function changeMonth() {
+        currentMonth = document.getElementById("monthSelect").value;
+        updateView();
+    }
+
+    async function handleAuth(e) {
+        e.preventDefault();
+        if (!auth) return alert("Firebase Auth non è pronto.");
+        
+        const email = document.getElementById("authEmail").value;
+        const password = document.getElementById("authPassword").value;
+        const errDiv = document.getElementById("authError");
+        errDiv.classList.add("hidden");
+
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+        } catch (err) {
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+                try {
+                    await auth.createUserWithEmailAndPassword(email, password);
+                } catch (createErr) {
+                    errDiv.innerText = createErr.message;
+                    errDiv.classList.remove("hidden");
+                }
+            } else {
+                errDiv.innerText = err.message;
+                errDiv.classList.remove("hidden");
+            }
+        }
+    }
+
+    function logout() { 
+        if (currentUser && currentUser.isGuest) {
+            currentUser = null;
+            document.getElementById("authScreen").classList.remove("hidden");
+            return;
+        }
+        if (auth) auth.signOut(); 
+    }
+
+    function listenToDatabase() {
+        if (!db) {
+            loadLocalData();
+            updateView();
+            return;
+        }
+        db.ref("user_budget").on("value", (snapshot) => {
+            const data = snapshot.val() || {};
+            expensesData = data.expenses || {};
+            incomesData = data.incomes || {};
+            saveLocalData();
+            updateView();
+        }, (err) => {
+            console.warn("Firebase RTDB listener non riuscito, uso localStorage:", err);
+            loadLocalData();
+            updateView();
+        });
+    }
+
+    function getMonthFixedExpenses(month) {
+        return [...baseMonthlyFixed, ...(periodicExpenses[month] || [])];
+    }
+
+    function getCurrentMonthConfig() {
+        const allMonths = [...YEAR_MONTHS["2026"], ...YEAR_MONTHS["2027"]];
+        return allMonths.find(m => m.key === currentMonth) || { baseIncome: 0, tag: "Base", breakdown: [] };
+    }
+
+    // Calcola il margine netto di un singolo mese
+    function getMonthNetMargin(mKey, mYear) {
+        const yearMonths = YEAR_MONTHS[mYear] || [];
+        const monthConf = yearMonths.find(m => m.key === mKey) || { baseIncome: 0 };
+
+        const currentExpenses = Object.values(expensesData[mKey] || {});
+        const currentIncomes = Object.values(incomesData[mKey] || {});
+
+        const extraIncomeTotal = currentIncomes.reduce((sum, item) => sum + item.amount, 0);
+        const totalIncome = monthConf.baseIncome + extraIncomeTotal;
+        const totalFixedMonth = getMonthFixedExpenses(mKey).reduce((sum, item) => sum + item.amount, 0);
+        const totalVariable = currentExpenses.reduce((sum, item) => sum + item.amount, 0);
+
+        return totalIncome - (totalFixedMonth + totalVariable);
+    }
+
+    // Calcola sia la Base Iniziale (startOfMonthBalance) sia il Saldo Finale a fine mese
+    function calculateCumulativeAccountBalance() {
+        const currentIndex = CHRONOLOGICAL_MONTHS.findIndex(m => m.key === currentMonth && m.year === currentYear);
+        const targetIndex = currentIndex !== -1 ? currentIndex : 0;
+
+        let runningBalance = INITIAL_ACCOUNT_BALANCE;
+
+        // Se siamo al primo mese assoluto (Agosto 2026), la base iniziale è 5.348,43 €
+        // Per i mesi successivi, sommiamo i margini di tutti i mesi PRECEDENTI
+        for (let i = 0; i < targetIndex; i++) {
+            const item = CHRONOLOGICAL_MONTHS[i];
+            runningBalance += getMonthNetMargin(item.key, item.year);
+        }
+
+        const startOfMonthBalance = runningBalance; // Base di partenza ad inizio mese
+        const currentMargin = getMonthNetMargin(CHRONOLOGICAL_MONTHS[targetIndex].key, CHRONOLOGICAL_MONTHS[targetIndex].year);
+        const endOfMonthBalance = startOfMonthBalance + currentMargin; // Saldo calcolato a fine mese
+        const currentLabel = CHRONOLOGICAL_MONTHS[targetIndex] ? CHRONOLOGICAL_MONTHS[targetIndex].label : "";
+
+        return { startOfMonthBalance, endOfMonthBalance, currentLabel };
+    }
+
+    function updateView() {
+        const monthConfig = getCurrentMonthConfig();
+        const currentExpenses = Object.values(expensesData[currentMonth] || {});
+        const currentIncomes = Object.values(incomesData[currentMonth] || {});
+
+        const extraIncomeTotal = currentIncomes.reduce((sum, item) => sum + item.amount, 0);
+        const totalIncome = monthConfig.baseIncome + extraIncomeTotal;
+        const totalFixedMonth = getMonthFixedExpenses(currentMonth).reduce((sum, item) => sum + item.amount, 0);
+        const totalVariable = currentExpenses.reduce((sum, item) => sum + item.amount, 0);
+        const remaining = totalIncome - (totalFixedMonth + totalVariable);
+
+        // Aggiornamento Conto Generale
+        const accountInfo = calculateCumulativeAccountBalance();
+        document.getElementById("displayTotalAccount").innerText = formatEuro(accountInfo.endOfMonthBalance);
+        
+        // Aggiorna la visualizzazione della Base Iniziale nell'interfaccia
+        const displayInitialBaseElements = document.querySelectorAll(".displayInitialBase, #displayInitialBase");
+        displayInitialBaseElements.forEach(el => {
+            el.innerText = formatEuro(accountInfo.startOfMonthBalance);
+        });
+
+        document.getElementById("accountCurrentMonthLabel").innerText = accountInfo.currentLabel;
+
+        document.getElementById("displayIncome").innerText = formatEuro(totalIncome);
+        document.getElementById("displayFixed").innerText = formatEuro(totalFixedMonth);
+        document.getElementById("displayVariable").innerText = formatEuro(totalVariable);
+
+        const totalFuel = currentExpenses.filter(e => e.category === "Carburante").reduce((s, e) => s + e.amount, 0);
+        const totalFood = currentExpenses.filter(e => e.category === "Spesa Alimentare").reduce((s, e) => s + e.amount, 0);
+        document.getElementById("fuelBudgetBar").innerText = `${Math.round(totalFuel)}/200€`;
+        document.getElementById("foodBudgetBar").innerText = `${Math.round(totalFood)}/400€`;
+
+        const remainingElem = document.getElementById("displayRemaining");
+        remainingElem.innerText = (remaining >= 0 ? "+" : "") + formatEuro(remaining);
+        remainingElem.className = remaining < 0 ? "text-lg md:text-xl font-bold text-rose-400" : "text-lg md:text-xl font-bold text-emerald-400";
+
+        renderTables(currentIncomes, currentExpenses);
+        if (typeof lucide !== "undefined") lucide.createIcons();
+    }
+
+    function addIncome(e) {
+        e.preventDefault();
+        const cat = document.getElementById("incomeCategory").value;
+        const amount = parseFloat(document.getElementById("incomeAmount").value);
+        const note = document.getElementById("incomeNote").value.trim() || "-";
+        const date = document.getElementById("incomeDate").value;
+        const newId = Date.now().toString();
+
+        if (!incomesData[currentMonth]) incomesData[currentMonth] = {};
+        incomesData[currentMonth][newId] = { id: newId, category: cat, amount, note, date };
+        saveLocalData();
+        updateView();
+
+        if (db && currentUser && !currentUser.isGuest) {
+            db.ref(`user_budget/incomes/${currentMonth}/${newId}`).set({
+                id: newId, category: cat, amount, note, date
+            }).catch(err => console.warn("Errore sync Firebase:", err));
+        }
+
+        document.getElementById("incomeAmount").value = "";
+        document.getElementById("incomeNote").value = "";
+    }
+
+    function addExpense(e) {
+        e.preventDefault();
+        const cat = document.getElementById("expenseCategory").value;
+        const amount = parseFloat(document.getElementById("expenseAmount").value);
+        const note = document.getElementById("expenseNote").value.trim() || "-";
+        const date = document.getElementById("expenseDate").value;
+
+        const currentExpenses = Object.values(expensesData[currentMonth] || {});
+        if (CATEGORY_BUDGETS[cat]) {
+            const limit = CATEGORY_BUDGETS[cat];
+            const currentSpent = currentExpenses.filter(i => i.category === cat).reduce((s, i) => s + i.amount, 0);
+            if (currentSpent + amount > limit) {
+                safeAlert(`⚠️ LIMITE SUPERATO!\n\nPer "${cat}" hai impostato un tetto di ${formatEuro(limit)}.\nSpesi finora: ${formatEuro(currentSpent)}.`);
+                return;
+            }
+        }
+
+        const newId = Date.now().toString();
+        if (!expensesData[currentMonth]) expensesData[currentMonth] = {};
+        expensesData[currentMonth][newId] = { id: newId, category: cat, amount, note, date };
+        saveLocalData();
+        updateView();
+
+        if (db && currentUser && !currentUser.isGuest) {
+            db.ref(`user_budget/expenses/${currentMonth}/${newId}`).set({
+                id: newId, category: cat, amount, note, date
+            }).catch(err => console.warn("Errore sync Firebase:", err));
+        }
+
+        document.getElementById("expenseAmount").value = "";
+        document.getElementById("expenseNote").value = "";
+    }
+
+    function deleteIncome(id) { 
+        if (incomesData[currentMonth]) {
+            delete incomesData[currentMonth][id];
+            saveLocalData();
+            updateView();
+        }
+        if (db && currentUser && !currentUser.isGuest) {
+            db.ref(`user_budget/incomes/${currentMonth}/${id}`).remove().catch(err => console.warn(err));
+        }
+    }
+
+    function deleteExpense(id) { 
+        if (expensesData[currentMonth]) {
+            delete expensesData[currentMonth][id];
+            saveLocalData();
+            updateView();
+        }
+        if (db && currentUser && !currentUser.isGuest) {
+            db.ref(`user_budget/expenses/${currentMonth}/${id}`).remove().catch(err => console.warn(err));
+        }
+    }
+
+    function clearIncomesData() {
+        if (safeConfirm("Svuotare entrate extra del mese?")) {
+            incomesData[currentMonth] = {};
+            saveLocalData();
+            updateView();
+            if (db && currentUser && !currentUser.isGuest) {
+                db.ref(`user_budget/incomes/${currentMonth}`).remove().catch(err => console.warn(err));
+            }
+        }
+    }
+
+    function clearExpensesData() {
+        if (safeConfirm("Svuotare uscite variabili del mese?")) {
+            expensesData[currentMonth] = {};
+            saveLocalData();
+            updateView();
+            if (db && currentUser && !currentUser.isGuest) {
+                db.ref(`user_budget/expenses/${currentMonth}`).remove().catch(err => console.warn(err));
+            }
+        }
+    }
+
+    function renderTables(incomes, expenses) {
+        const incBody = document.getElementById("incomeTableBody");
+        const expBody = document.getElementById("expenseTableBody");
+        incBody.innerHTML = ""; expBody.innerHTML = "";
+
+        document.getElementById("emptyIncomeMessage").classList.toggle("hidden", incomes.length > 0);
+        document.getElementById("emptyExpenseMessage").classList.toggle("hidden", expenses.length > 0);
+
+        incomes.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(i => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td class="p-2">${formatDate(i.date)}</td><td class="p-2"><span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-bold">${i.category}</span></td><td class="p-2 text-slate-500">${i.note}</td><td class="p-2 text-right font-bold text-emerald-600">+${formatEuro(i.amount)}</td><td class="p-2 text-center"><button onclick="deleteIncome('${i.id}')" class="text-slate-400 hover:text-rose-600"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></td>`;
+            incBody.appendChild(tr);
+        });
+
+        expenses.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(e => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td class="p-2">${formatDate(e.date)}</td><td class="p-2"><span class="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded text-[10px] font-bold">${e.category}</span></td><td class="p-2 text-slate-500">${e.note}</td><td class="p-2 text-right font-bold text-slate-900">-${formatEuro(e.amount)}</td><td class="p-2 text-center"><button onclick="deleteExpense('${e.id}')" class="text-slate-400 hover:text-rose-600"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></td>`;
+            expBody.appendChild(tr);
+        });
+    }
+
+    // Modal Dettaglio Entrate
+    function openIncomeModal() {
+        const monthConfig = getCurrentMonthConfig();
+        document.getElementById("modalIncomeMonthName").innerText = `${monthConfig.label} ${currentYear}`;
+        const modalBody = document.getElementById("modalIncomeTableBody");
+        modalBody.innerHTML = "";
+        
+        let total = 0;
+
+        // Entrate Fisse / Ricorrenti
+        if (monthConfig.breakdown && monthConfig.breakdown.length > 0) {
+            monthConfig.breakdown.forEach(item => {
+                total += item.amount;
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="p-2 font-semibold text-emerald-900"><span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[10px]">Fissa</span></td>
+                    <td class="p-2 font-medium text-slate-800">${item.name}</td>
+                    <td class="p-2 text-slate-400">Ricorrente mensile</td>
+                    <td class="p-2 text-right font-bold text-emerald-600">+${formatEuro(item.amount)}</td>
+                `;
+                modalBody.appendChild(tr);
+            });
+        }
+
+        // Entrate Extra Registrate dal Form
+        const currentIncomes = Object.values(incomesData[currentMonth] || {});
+        currentIncomes.forEach(i => {
+            total += i.amount;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td class="p-2 font-semibold text-blue-900"><span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px]">Extra</span></td>
+                <td class="p-2 font-medium text-slate-800">${i.category}</td>
+                <td class="p-2 text-slate-500">${i.note} (${formatDate(i.date)})</td>
+                <td class="p-2 text-right font-bold text-emerald-600">+${formatEuro(i.amount)}</td>
+            `;
+            modalBody.appendChild(tr);
+        });
+
+        document.getElementById("modalIncomeTotal").innerText = formatEuro(total);
+        document.getElementById("incomeModal").classList.remove("hidden");
+    }
+
+    function closeIncomeModal() { document.getElementById("incomeModal").classList.add("hidden"); }
+
+    // Modal Uscite Fisse
+    function openFixedModal() {
+        const monthConfig = getCurrentMonthConfig();
+        document.getElementById("modalMonthName").innerText = `${monthConfig.label} ${currentYear}`;
+        const modalBody = document.getElementById("modalFixedTableBody");
+        modalBody.innerHTML = "";
+        const list = getMonthFixedExpenses(currentMonth);
+        let total = 0;
+        list.forEach(i => {
+            total += i.amount;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td class="p-2 font-semibold text-blue-900">${i.cat}</td><td class="p-2">${i.name}</td><td class="p-2 text-slate-400">${i.desc}</td><td class="p-2 text-right font-bold">${formatEuro(i.amount)}</td>`;
+            modalBody.appendChild(tr);
+        });
+        document.getElementById("modalFixedTotal").innerText = formatEuro(total);
+        document.getElementById("fixedModal").classList.remove("hidden");
+    }
+
+    function closeFixedModal() { document.getElementById("fixedModal").classList.add("hidden"); }
+    function formatEuro(val) { return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(val); }
+    function formatDate(dStr) { if (!dStr) return "-"; const [y, m, d] = dStr.split("-"); return `${d}/${m}`; }
+</script>
+</body>
+</html>

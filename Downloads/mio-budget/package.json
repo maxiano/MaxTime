@@ -1,0 +1,14 @@
+{
+  "name": "gestore-budget-spese",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Applicazione per la gestione del budget personale e delle spese",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'Build complete'",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

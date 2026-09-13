@@ -1,0 +1,18 @@
+{
+  "name": "Gestore Budget & Spese",
+  "short_name": "BudgetApp",
+  "description": "Applicazione per la gestione del budget personale e delle spese",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./bilancio.jpeg",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

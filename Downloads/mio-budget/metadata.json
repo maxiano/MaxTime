@@ -1,0 +1,8 @@
+{
+  "name": "Gestore Budget & Spese",
+  "description": "Applicazione per la gestione del budget personale e delle spese",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
