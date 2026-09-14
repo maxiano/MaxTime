@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "DayFlow",
+  "short_name": "DayFlow",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "./icon1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon2.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
